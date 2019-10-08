@@ -9,22 +9,27 @@
 LiquidCrystal_I2C lcd(0x27, 2, 1, 0, 4, 5, 6, 7, 3, POSITIVE);    //Set the LCD I2C address. These are default values. 0x27 is the device address.
 
 int total_system_power = 100 // Power required to operate of the whole system = 100W
-
 float maxWindPower_watts = 60
 float windPower_watts;                         // in Watts
 int windPower_share;                     // in %
 float maxSolarPower_watts = 120
-float solarPower_watts;                        // in Watt
+float solarPower_watts;                        // in Watts
 int solarPower_share;                    // in %
-int batteryLevel_percent = 50 ;                    // initial Li-Ion. Battery name:18650. Values in %. 50% means 50 Watt hours.
+float renewables_watts;            // in Watts
+
 int userDemand;                          // 0 for no demand, 1 for low demand, 2 for high demand
 
-float renewables_watts;            // in Watt
-float batteryCharge_joules;           // in Joules. Describes the current level of battery charge in Watt-hr. 1Wh = 3600J
+int upperWaterLevelThreshold = 400
+int lowerWaterLevelThreshold = 50
+
+const int initialBatteryLevel_percent = 50 ;                    // initial Li-Ion. Battery name:18650. Values in %. 50% means 50 Watt hours.
+int runningBatteryLevel_percent;
+int dummyBatteryLevel_percent = 50;
+float initialBatteryCharge_joules;           // in Joules. Describes the current level of battery charge in Watt-hr. 1Wh = 3600J
+float currentBatteryCharge_joules;
 
 unsigned long intime;
 unsigned long extime;
-unsigned long time_to_empty_battery;
 char junk = ' ';
 const int chargerPin = 2;        //relay for battery chargerPin  
 const int pumpPin = 3;          //relay for submersible pump connect to pin 3，Plug into NC
@@ -33,6 +38,8 @@ const byte  ENA = 6;         //L298N pins setting, for conveyor DC motor. First 
 const byte  INA1 = 5;       // Second pin for motor
 const byte  INA2 = 4;       // Third pin for motor
 const int waterLevelPin = A3;          //Pin A3 is for the water level sensor. Why integer? Bcos it is given by manufacturer. A3 will be converted to integer on the board.
+
+int currentWaterLevel = analogRead(waterLevelPin);
 
 
 void setup()                    // run once when the sketch starts
@@ -104,329 +111,171 @@ void setup()                    // run once when the sketch starts
   delay(1500);    
   lcd.clear(); lcd.home();
   lcd.print("Renewables = "); lcd.print(r);
+
+  int initialWaterLevel = analogRead(waterLevelPin);
+  Serial.print("Initial water level = "); Serial.println(initialWaterLevel);
+  initialBatteryCharge_joules = initialBatteryLevel_percent*3600 ;  // current battery capacity here is 180 000 J if battery level = 50%
+  Serial.print("Initial battery charge = "); Serial.print(batteryCharge_joules); Serial.println(" Joules");
+
+  startTime = millis();
 }
 
 
 void loop()
-{ 
-  int w0 = analogRead(waterLevelPin);
-  Serial.print("Water level(w0) = "); Serial.println(w0);
-  batteryCharge_joules = batteryLevel_percent*3600 ;  // current battery capacity here is 180 000 J if battery level = 50%
-  Serial.print("Initial battery charge = "); Serial.print(batteryCharge_joules); Serial.println(" Joules")
-
-  // Mode 1:pumps on, conveyor full speed. Renewables share at 100%, low and medium level water supply, high demand. 
-  while((renewables_watts>=total_system_power && 1<analogRead(waterLevelPin)<400 && userDemand ==2 ) || (renewables_watts<total_system_power && analogRead(waterLevelPin)<=5 && userDemand ==2) )
-  {
-    intime = millis();            // time that enter this while loop
-    Serial.print("time that enter this while loop = "); Serial.println(intime);
-
-    time_to_empty_battery = (batteryCharge_joules / (total_system_power-renewables_watts)) // Give us time in seconds
-    
-    int w1=analogRead(waterLevelPin);
-    Serial.print("Water Level(w1)=");
-    Serial.println(w1);
-       
-       if(analogRead(waterLevelPin)>401)  // 401 is minimum level to be considered high water supply. Break out from firsst condition
-          {
-           Serial.print("end of scenerio 1, end water level ="); Serial.println(analogRead(waterLevelPin));
-           extime = millis();
-           Serial.print("time that exit this while loop=");
-           Serial.println(extime);
-           batteryCharge_joules = batteryCharge_joules + (renewables_watts - total_system_power)*((extime - intime)/1000);    // unit: joule
-           batteryLevel_percent = batteryCharge_joules/360000;
-           
-           if(batteryLevel_percent>=100)
-           {
-            batteryCharge_joules=360000;   // Battery charge cannot be greater than 360000, ie no greater than 100%
-            batteryLevel_percent = 100;
-           }
-           
-           Serial.print("batteryCharge_joules1="); Serial.println(batteryCharge_joules);
-           // Print on LCD as well
-           break;
+{   
+  if (renewables_watts >= total_system_power){  //Battery charging   
+    switch (userDemand){
+      case 2: // High demand
+          while (currentWaterLevel >= upperWaterLevelThreshold){    // High water level
+            if (currentBatteryLevel_percent <= 100){
+              displayBatteryLevel_charging(startTime);
+            }
+            digitalWrite(pumpPin, LOW);    //  Turn off pump 
+            Serial.println("Pump off, conveyor full speed");
+            runMotorFast();  delay(2000);
+            brakeMotor();
+            digitalWrite(valvePin, HIGH);  delay(1000);  // Fill the bottle.
+            digitalWrite(valvePin, LOW);
           }
-          
-     
-        if(renewables_watts<total_system_power &&(millis()-intime)>=time_to_empty_battery )
-        {
-         batteryCharge_joules=0;
-         batteryLevel_percent=0; 
-         Serial.print("end of scenerio 1, Battery is empty, please charge");
-         break;
-        }
+          while (upperWaterLevelThreshold > currentWaterLevel){   // Medium or low water level
+            if (currentBatteryLevel_percent <= 100){
+              displayBatteryLevel_charging(startTime);
+            }
+            digitalWrite(pumpPin, HIGH);    //  Turn on pump 
+            Serial.println("Pump on, conveyor full speed");
+            runMotorFast();  delay(2000);
+            brakeMotor();
+            digitalWrite(valvePin, HIGH);  delay(1000);  // Fill the bottle.
+            digitalWrite(valvePin, LOW);
+          }
+
+      case 1: // Low demand
+          while (currentWaterLevel >= upperWaterLevelThreshold){                              // High water level
+            if (currentBatteryLevel_percent <= 100){
+              displayBatteryLevel_charging(startTime);
+            }
+            digitalWrite(pumpPin, LOW);    //  Turn off pump 
+            Serial.println("Pump off, conveyor slow");
+            runMotorSlow(); delay(4000);
+            brakeMotor();
+            digitalWrite(valvePin, HIGH);  delay(1000);  // Fill the bottle.
+            digitalWrite(valvePin, LOW);
+          }
+          while (upperWaterLevelThreshold > currentWaterLevel){    // Medium or low water level
+            if (currentBatteryLevel_percent <= 100){
+              displayBatteryLevel_charging(startTime);
+            }
+            digitalWrite(pumpPin, HIGH);    //  Turn on pump
+            Serial.println("Pump on, conveyor slow");
+            runMotorSlow(); delay(4000);
+            brakeMotor();
+            digitalWrite(valvePin, HIGH);  delay(1000);  // Fill the bottle.
+            digitalWrite(valvePin, LOW);            
+          }
+
+      case 0: // No demand
+          while (currentWaterLevel >= upperWaterLevelThreshold){                              // High water level
+            if (currentBatteryLevel_percent <= 100){
+              displayBatteryLevel_charging(startTime);
+            }
+            digitalWrite(pumpPin, LOW);    //  Turn off pump 
+            stopMotor();
+            digitalWrite(valvePin, LOW);
+            Serial.println("Pump off, conveyor stop");
+          }
+          while (upperWaterLevelThreshold > currentWaterLevel){    // Medium or low water level
+            if (currentBatteryLevel_percent <= 100){
+              displayBatteryLevel_charging(startTime);
+            }
+            digitalWrite(pumpPin, HIGH);    //  Turn on pump
+            stopMotor();
+            digitalWrite(valvePin, LOW);
+            Serial.println("Pump on, conveyor stop");            
+          }           
+    }}
+  else { // Renewables not enough 
+    switch (userDemand){
+      case 2:  // High demand
+          while (currentWaterLevel >= lowerWaterLevelThreshold){
+            if (displayBatteryLevel_discharging(startTime) >= 0){
+              digitalWrite(pumpPin, LOW);    //  Turn off pump 
+              Serial.println("Pump off, conveyor full speed");
+              runMotorFast();  delay(2000);
+              brakeMotor();
+              digitalWrite(valvePin, HIGH);  delay(1000);  // Fill the bottle.
+              digitalWrite(valvePin, LOW);
+            }
+            else {
+              stopEverything();
+            }
+          }
+          while (currentWaterLevel < lowerWaterLevelThreshold){
+            if (displayBatteryLevel_discharging(startTime) >= 0){
+              digitalWrite(pumpPin, HIGH);    //  Turn on pump 
+              Serial.println("Pump on, conveyor full speed");
+              runMotorFast();  delay(2000);
+              brakeMotor();
+              digitalWrite(valvePin, HIGH);  delay(1000);  // Fill the bottle.
+              digitalWrite(valvePin, LOW);
+            }
+            else {
+              stopEverything();
+            }
+          }
+      case 1: // Low demand
+          while (currentWaterLevel >= lowerWaterLevelThreshold){                // High or medium water level
+            if (displayBatteryLevel_discharging(startTime) >= 0){
+              digitalWrite(pumpPin, LOW);    //  Turn off pump 
+              Serial.println("Pump off, conveyor slow");
+              runMotorSlow(); delay(4000);
+              brakeMotor();
+              digitalWrite(valvePin, HIGH);  delay(1000);  // Fill the bottle.
+              digitalWrite(valvePin, LOW);
+            }
+            else {
+              stopEverything();
+            }
+          }
+          while (currentWaterLevel < lowerWaterLevelThreshold){                 // Low water level
+            if (displayBatteryLevel_discharging(startTime) >= 0){
+              digitalWrite(pumpPin, HIGH);    //  Turn on pump
+              Serial.println("Pump on, conveyor slow");
+              runMotorSlow(); delay(4000);
+              brakeMotor();
+              digitalWrite(valvePin, HIGH);  delay(1000);  // Fill the bottle.
+              digitalWrite(valvePin, LOW);
+            }
+            else {
+              stopEverything();
+            }
+          }
+      case 0: // No demand
+          while (currentWaterLevel >= lowerWaterLevelThreshold){                // High or medium water level
+            if (displayBatteryLevel_discharging(startTime) >= 0){
+              digitalWrite(pumpPin, LOW);    //  Turn off pump 
+              stopMotor();
+              digitalWrite(valvePin, LOW);
+              Serial.println("Pump off, conveyor stop");
+            }
+            else {
+              stopEverything();
+            }
+          }
+          while (currentWaterLevel < lowerWaterLevelThreshold){                 // Low water level
+            if (displayBatteryLevel_discharging(startTime) >= 0){
+              digitalWrite(pumpPin, HIGH);    //  Turn on pump
+              stopMotor();
+              digitalWrite(valvePin, LOW);
+              Serial.println("Pump on, conveyor stop");
+            }
+            else {
+              stopEverything();
+            }
+          }
+    }
         
-
-    // digitalWrite(chargerPin , HIGH);  // turn on chargerPin  to charge batteries. We do not need to charge for demo.
-    digitalWrite(pumpPin, HIGH);    //  turn on submersible pump 
- 
-    runMotorFast();   delay(2000);
-    brakeMotor;  delay(500);
-    digitalWrite(valvePin, HIGH);  delay(1000);
-    digitalWrite(valvePin, LOW);
-    Serial.println("pumps on, conveyor full speed");
-   }
-  
-  /*
-  // op 2:pumps on, conveyor half speed
-  while((renewables_watts>=100 && analogRead(waterLevelPin)<400 && userDemand ==1 ) || (renewables_watts<100 && analogRead(waterLevelPin)<18 && userDemand ==1) )
-  {
-    intime = millis();            // time that enter this while loop
-    Serial.print("time that enter this while loop=");
-    Serial.println(intime);
-
-    time_to_empty_battery =(batteryCharge_joules/(renewables_watts-100))*1000; //[unit:ms], time duration that battery would die
-    
-    int w2=analogRead(waterLevelPin);
-    Serial.print("Water Level(w2)=");
-    Serial.println(w2);
-       if((analogRead(waterLevelPin)>400))
-          {
-           Serial.print("end of scenerio 2, end water level=");
-           Serial.println(analogRead(waterLevelPin));
-           extime = millis();
-           Serial.print("time that exit this while loop=");
-           Serial.println(extime);
-           batteryCharge_joules =batteryCharge_joules +(renewables_watts - 100)*((extime - intime)/1000);    // unit: joule
-           batteryLevel_percent = batteryCharge_joules/1260; // in %
-           if(batteryLevel_percent>=100)
-           {
-            batteryCharge_joules=126000;
-            batteryLevel_percent=100;
-           }
-           Serial.print("batteryCharge_joules1=");   // 或是print batteryLevel_percent value 
-           Serial.println(batteryCharge_joules);
-           break;
-          }
-        if(renewables_watts<100 &&(millis()-intime)>=time_to_empty_battery )
-        {
-         batteryCharge_joules=0;
-         batteryLevel_percent=0; 
-         Serial.print("batteryLevel_percent(%)=");   // 或是print batteryLevel_percent value 
-         Serial.println(batteryLevel_percent);
-         Serial.print("end of scenerio 2, Battery is empty, please charge");
-         break;
-        }
-
-    digitalWrite(chargerPin , HIGH);  // turn on chargerPin  to charge batteries
-    digitalWrite(pumpPin, HIGH);    //  turn on submersible pump 
- 
-    runMotorSlow();   delay(2000);
-    brakeMotor;  delay(2000);
-    digitalWrite(valvePin, HIGH);  delay(1000);
-    digitalWrite(valvePin, LOW);   delay(1000);
-    Serial.println("pumps on, conveyor half speed");
   }
-   // op 3: pump on, conveyor off
-    while((renewables_watts>=10 && 5<analogRead(waterLevelPin)<400 && userDemand ==0 ) || (renewables_watts<10 && analogRead(waterLevelPin)<5 && userDemand ==0) )
-  {
-    intime = millis();            // time that enter this while loop
-    Serial.print("time that enter this while loop=");
-    Serial.println(intime);
-
-    time_to_empty_battery =(batteryCharge_joules/(renewables_watts-100))*1000; //[unit:ms], time duration that battery would die
-    
-    int w3=analogRead(waterLevelPin);
-    Serial.print("Water Level(w3)=");
-    Serial.println(w3);
-       
-       if(analogRead(waterLevelPin)>400)
-          {
-           Serial.print("end of scenerio 3, end water level=");
-           Serial.println(analogRead(waterLevelPin));
-           extime = millis();
-           Serial.print("time that exit this while loop=");
-           Serial.println(extime);
-           batteryCharge_joules =batteryCharge_joules +(renewables_watts - 10)*((extime - intime)/10);    // unit: joule
-           batteryLevel_percent = batteryCharge_joules/10; // in %
-           
-           if(batteryLevel_percent>=100)
-           {
-            batteryCharge_joules=126000; // total battery capacity to be installed
-            batteryLevel_percent=100;
-           }
-           
-           Serial.print("batteryCharge_joules1=");   // 或是print batteryLevel_percent value 
-           Serial.println(batteryCharge_joules);
-           break;
-          }
-          
-     
-        if(renewables_watts<10 &&(millis()-intime)>=time_to_empty_battery )
-        {
-         batteryCharge_joules=0;
-         batteryLevel_percent=0; 
-         Serial.print("end of scenerio 3, Battery is empty, please charge");
-         break;
-        }
-        
-
-    digitalWrite(chargerPin , HIGH);  // turn on chargerPin  to charge batteries
-    digitalWrite(pumpPin, HIGH);    //  turn on submersible pump 
- 
-    stopMotor();   
-    digitalWrite(valvePin, HIGH);  delay(1000);
-    digitalWrite(valvePin, LOW);   delay(1000);
-    Serial.println("pumps on, conveyor off");
-   }   
-  // op 4: pump off, conveyor full speed
-  while((renewables_watts>=10 && analogRead(waterLevelPin)>400 && userDemand ==2 ) || (renewables_watts<10 && analogRead(waterLevelPin)>18 && userDemand ==2) )
-  {
-    intime = millis();            // time that enter this while loop
-    Serial.print("time that enter this while loop=");
-    Serial.println(intime);
-
-    time_to_empty_battery =(batteryCharge_joules/(renewables_watts-100))*1000; //[unit:ms], time duration that battery would die
-    
-    int w4=analogRead(waterLevelPin);
-    Serial.print("Water Level(w4)=");
-    Serial.println(w4);
-       
-       if(analogRead(waterLevelPin)<400)
-          {
-           Serial.print("end of scenerio 4, end water level=");
-           Serial.println(analogRead(waterLevelPin));
-           extime = millis();
-           Serial.print("time that exit this while loop=");
-           Serial.println(extime);
-           batteryCharge_joules =batteryCharge_joules +(renewables_watts - 10)*((extime - intime)/10);    // unit: joule
-           batteryLevel_percent = batteryCharge_joules/10; // in %
-           
-           if(batteryLevel_percent>=100)
-           {
-            batteryCharge_joules=126000; // total installed battery capacity
-            batteryLevel_percent=100;
-           }
-           
-           Serial.print("batteryCharge_joules1=");   // 或是print batteryLevel_percent value 
-           Serial.println(batteryCharge_joules);
-           break;
-          }
-          
-     
-        if(renewables_watts<10 &&(millis()-intime)>=time_to_empty_battery )
-        {
-         batteryCharge_joules=0;
-         batteryLevel_percent=0; 
-         Serial.print("end of scenerio 4, Battery is empty, please charge");
-         break;
-        }
-        
-
-    digitalWrite(chargerPin , HIGH);  // turn on chargerPin  to charge batteries
-    digitalWrite(pumpPin, LOW);    //  turn on submersible pump 
- 
-    runMotorFast();   delay(2000);
-    brakeMotor;  delay(2000);
-    digitalWrite(valvePin, HIGH);  delay(1000);
-    digitalWrite(valvePin, LOW);   delay(1000);
-    Serial.println("pumps off, conveyor full speed");
-   }   
-  // op 5: pump off, conveyor half speed
-  while((renewables_watts>=10 && analogRead(waterLevelPin)>400 && userDemand ==1 ) || (renewables_watts<10 && 18<analogRead(waterLevelPin)<600 && userDemand ==1) )
-  {
-    intime = millis();            // time that enter this while loop
-    Serial.print("time that enter this while loop=");
-    Serial.println(intime);
-
-    time_to_empty_battery =(batteryCharge_joules/(renewables_watts-100))*1000; //[unit:ms], time duration that battery would die
-    
-    int w5=analogRead(waterLevelPin);
-    Serial.print("Water Level(w5)=");
-    Serial.println(w5);
-       
-       if(renewables_watts>=10 && analogRead(waterLevelPin)<400)
-          {
-           Serial.print("end of scenerio 5, end water level=");
-           Serial.println(analogRead(waterLevelPin));
-           extime = millis();
-           Serial.print("time that exit this while loop=");
-           Serial.println(extime);
-           batteryCharge_joules =batteryCharge_joules +(renewables_watts - 10)*((extime - intime)/10);    // unit: joule
-           batteryLevel_percent = batteryCharge_joules/10; // in %
-           
-           if(batteryLevel_percent>=100)
-           {
-            batteryCharge_joules=126000; // total installed battery capacity
-            batteryLevel_percent=100;
-           }
-           
-           Serial.print("batteryCharge_joules1=");   // 或是print batteryLevel_percent value 
-           Serial.println(batteryCharge_joules);
-           break;
-          }
-          
-     
-        if(renewables_watts<10 &&(millis()-intime)>=time_to_empty_battery )
-        {
-         batteryCharge_joules=0;
-         batteryLevel_percent=0; 
-         Serial.print("end of scenerio 5, Battery is empty, please charge");
-         break;
-        }
-        
-
-    //digitalWrite(chargerPin , HIGH);  // !!! turn on chargerPin  to charge batteries
-    digitalWrite(pumpPin, LOW);    //  turn on submersible pump 
- 
-    runMotorSlow();   delay(2000);
-    brakeMotor;  delay(2000);
-    digitalWrite(valvePin, HIGH);  delay(1000);
-    digitalWrite(valvePin, LOW);   delay(1000);
-    Serial.println("pumps off, conveyor half speed");
-   }  
-  // op 6:pumps off, conveyor off
-  while((renewables_watts>=10 && analogRead(waterLevelPin)>400 && userDemand ==0 ) || (renewables_watts<10 && 18<analogRead(waterLevelPin)<600 && userDemand ==0) )
-  {
-    intime = millis();            // time that enter this while loop
-    Serial.print("time that enter this while loop=");
-    Serial.println(intime);
-
-    time_to_empty_battery =(batteryCharge_joules/(renewables_watts-100))*1000; //[unit:ms], time duration that battery would die
-    
-    int w6=analogRead(waterLevelPin);
-    Serial.print("Water Level(w6)=");
-    Serial.println(w6);
-       
-       if(renewables_watts>=10 && analogRead(waterLevelPin)<400)
-          {
-           Serial.print("end of scenerio 6, end water level=");
-           Serial.println(analogRead(waterLevelPin));
-           extime = millis();
-           Serial.print("time that exit this while loop=");
-           Serial.println(extime);
-           batteryCharge_joules =batteryCharge_joules +(renewables_watts - 10)*((extime - intime)/10);    // unit: joule
-           batteryLevel_percent = batteryCharge_joules/10; // in %
-           
-           if(batteryLevel_percent>=100)
-           {
-            batteryCharge_joules=126000; // total installed battery capacity
-            batteryLevel_percent=100;
-           }
-           
-           Serial.print("batteryCharge_joules1=");   // 或是print batteryLevel_percent value 
-           Serial.println(batteryCharge_joules);
-           break;
-          }
-          
-     
-        if(renewables_watts<10 &&(millis()-intime)>=time_to_empty_battery )
-        {
-         batteryCharge_joules=0;
-         batteryLevel_percent=0; 
-         Serial.print("end of scenerio 6, Battery is empty, please charge");
-         break;
-        }
-        
-
-    //digitalWrite(chargerPin , HIGH);  // !!! turn on chargerPin  to charge batteries
-    digitalWrite(pumpPin, LOW);    //  turn on submersible pump 
- 
-    stopMotor();   
-    digitalWrite(valvePin, LOW);   delay(1000);
-    Serial.println("pumps off, conveyor off");
-   }  
-*/
- }
+}
 
 
 
@@ -459,6 +308,72 @@ void stopMotor()
 {
   analogWrite(ENA,0);
 }
+
+// No battery, stop everything
+void stopEverything()
+{
+  analogWrite(ENA,0);
+  digitalWrite(pumpPin, LOW);
+  digitalWrite(valvePin, LOW);
+  lcd.clear();
+}
+
+int displayBatteryLevel_discharging(time startTime)
+{
+  int currentBatteryLevel_percent;
+  currentBatteryCharge_joules = initialBatteryCharge_joules - (total_system_power-renewables_watts)*((millis()-startTime)/1000);
+  currentBatteryLevel_percent =  currentBatteryCharge_joules/360000*100;
+
+  if (dummyBatteryLevel_percent == initialBatteryLevel_percent){
+    lcd.clear();
+    lcd.home();
+    lcd.print("Battery level: "); lcd.print(initialBatteryLevel_percent); lcd.print("%");
+  }  
+  else if (dummyBatteryLevel_percent != currentBatteryLevel_percent && (dummyBatteryLevel_percent - currentBatteryLevel_percent) % 2 == 0){
+    if (currentBatteryLevel_percent > 0) {  
+      lcd.clear();    // Clears the display and lcd memory
+      lcd.home();
+      lcd.print("Battery level: "); lcd.print(currentBatteryLevel_percent); lcd.print("%");
+      dummyBatteryLevel_percent = currentBatteryLevel_percent;
+    }
+    else {
+      lcd.clear();    // Clears the display and lcd memory
+      lcd.home();
+      lcd.print("Battery empty.");
+    }
+  }
+  return currentBatteryLevel_percent;
+}
+
+
+int displayBatteryLevel_charging(time startTime)
+{
+  int currentBatteryLevel_percent;
+  currentBatteryCharge_joules = initialBatteryCharge_joules + (renewables_watts-total_system_power)*((millis()-startTime)/1000);
+  currentBatteryLevel_percent =  currentBatteryCharge_joules/360000*100;
+
+  if (dummyBatteryLevel_percent == initialBatteryLevel_percent){
+    lcd.clear();
+    lcd.home();
+    lcd.print("Battery level: "); lcd.print(initialBatteryLevel_percent); lcd.print("%");
+  }  
+  else if (dummyBatteryLevel_percent != currentBatteryLevel_percent && (currentBatteryLevel_percent - dummyBatteryLevel_percent) % 2 == 0){
+    if (currentBatteryLevel_percent < 100) {
+      lcd.clear();    // Clears the display and lcd memory
+      lcd.home();
+      lcd.print("Battery level: "); lcd.print(currentBatteryLevel_percent); lcd.print("%");
+      dummyBatteryLevel_percent = currentBatteryLevel_percent;
+    }
+    else {
+      lcd.clear();
+      lcd.home();
+      lcd.print("Battery full.");
+    }
+  }
+  
+  return currentBatteryLevel_percent
+}
+  
 
 //====================================
   
