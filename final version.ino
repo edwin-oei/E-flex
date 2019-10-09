@@ -279,11 +279,12 @@ void pumpOffConveyerOff() {
 void loop()
 {   
   int static newDemand = userDemand;
+  int i = 0;
   Serial.print("new user demand = "); Serial.println(newUserDemand); delay(3000);
   if (renewables_kiloWatts >= total_system_power){  //Battery charging   
     switch (newDemand){
       case 0: // No demand
-          int i = 0;
+          
           while (i == 0){
             if (analogRead(waterLevelPin) >= upperWaterLevelThreshold){
               displayBatteryLevel_charging();
@@ -300,7 +301,6 @@ void loop()
           }
           
       case 1: // Low demand
-          int i = 0;
           while (i == 0){
             if (analogRead(waterLevelPin) >= upperWaterLevelThreshold){
               displayBatteryLevel_charging();
@@ -320,9 +320,8 @@ void loop()
           }
       
       case 2: // High demand
-          i = 0;
           while (i == 0){
-            if ((analogRead(waterLevelPin) >= upperWaterLevelThreshold){
+            if (analogRead(waterLevelPin) >= upperWaterLevelThreshold){
               displayBatteryLevel_charging();
               pumpOffConveyorFast();
               Serial.println("High demand, high water level, charging.");
@@ -340,7 +339,6 @@ void loop()
   else { // Renewables not enough 
     switch (userDemand){
       case 2:  // High demand
-          int i = 0;
           while (i == 0){
             if (analogRead(waterLevelPin) >= lowerWaterLevelThreshold){
               if (displayBatteryLevel_discharging() > 0){
@@ -361,7 +359,6 @@ void loop()
           }
           
       case 1: // Low demand
-          int i = 0;
           while (i == 0){
             if (analogRead(waterLevelPin) >= lowerWaterLevelThreshold){                // High or medium water level
               if (displayBatteryLevel_discharging() >= 0){
@@ -382,7 +379,6 @@ void loop()
           }
           
       case 0: // No demand
-          int i = 0;
           while (i == 0){
             if (analogRead(waterLevelPin) >= lowerWaterLevelThreshold){                // High or medium water level
               if (displayBatteryLevel_discharging() >= 0){
