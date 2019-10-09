@@ -75,6 +75,11 @@ void displayBatteryLevel_charging()
     lcd.print("%");
     dummyBatteryLevel_percent = currentBatteryLevel_percent;  
   }
+   if (currentBatteryLevel_percent >= 100) {
+   lcd.clear();
+   lcd.home();
+   lcd.print("Fully charged");
+  }
 }
 
 void displayBatteryLevel_discharging()
@@ -96,5 +101,12 @@ void displayBatteryLevel_discharging()
     lcd.setCursor(2,1);
     lcd.print("%");
     dummyBatteryLevel_percent = currentBatteryLevel_percent;  
+  }
+  if (currentBatteryLevel_percent <= 0) {
+    lcd.clear();
+    lcd.home();
+    lcd.print("Battery empty");
+    lcd.setCursor(0,1);
+    lcd.print("Shutting down");
   }
 }
