@@ -57,12 +57,12 @@ void loop() {
 
 void displayBatteryLevel_charging()
 {
-  float static currentBatteryCharge_joules = 0;
+  float static currentBatteryCharge_kiloJoules = 0;
   int currentBatteryLevel_percent;
-  float initialBatteryCharge_joules = 180;
+  float initialBatteryCharge_kiloJoules = 180;
   
-  currentBatteryCharge_joules = initialBatteryCharge_joules + (millis()-startTime)/1000*0.6;
-  currentBatteryLevel_percent =  currentBatteryCharge_joules/360*100;
+  currentBatteryCharge_kiloJoules = initialBatteryCharge_kiloJoules + (millis()-startTime)/1000*0.6;
+  currentBatteryLevel_percent =  currentBatteryCharge_kiloJoules/360*100;
   
   if (currentBatteryLevel_percent != dummyBatteryLevel_percent && currentBatteryLevel_percent - dummyBatteryLevel_percent == 2){
     Serial.print("Charging"); Serial.print(currentBatteryLevel_percent); Serial.println("%");
@@ -84,12 +84,12 @@ void displayBatteryLevel_charging()
 
 void displayBatteryLevel_discharging()
 {
-  float static currentBatteryCharge_joules = 0;
+  float static currentBatteryCharge_kiloJoules = 0;
   int currentBatteryLevel_percent;
-  float initialBatteryCharge_joules = 180;
+  float initialBatteryCharge_kiloJoules = 180;
   
-  currentBatteryCharge_joules = initialBatteryCharge_joules - (millis()-startTime)/1000*0.4;
-  currentBatteryLevel_percent =  currentBatteryCharge_joules/360*100;
+  currentBatteryCharge_kiloJoules = initialBatteryCharge_kiloJoules - (millis()-startTime)/1000*0.4;
+  currentBatteryLevel_percent =  currentBatteryCharge_kiloJoules/360*100;
   
   if (currentBatteryLevel_percent != dummyBatteryLevel_percent && currentBatteryLevel_percent - dummyBatteryLevel_percent == 2){
     Serial.print("Discharging"); Serial.print(currentBatteryLevel_percent); Serial.println("%");
