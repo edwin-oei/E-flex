@@ -11,7 +11,7 @@ LiquidCrystal_I2C  lcd(0x27,2,1,0,4,5,6,7); // 0x27 is the I2C bus address for a
 float renewables_kiloWatts;            // in kiloWatts
 byte userDemand;
 char junk = ' ';
-int initialBatteryLevel_percent = 4;
+int initialBatteryLevel_percent = 50;
 unsigned long startTime;
 int dummyBatteryLevel_percent = initialBatteryLevel_percent;
 int currentBatteryLevel_percent = initialBatteryLevel_percent;   
@@ -99,7 +99,7 @@ void setup(){
   Serial.print("Solar power = "); Serial.print(solarPower_kiloWatts); Serial.println(" kiloWatts\n");
   renewables_kiloWatts = windPower_kiloWatts + solarPower_kiloWatts;
   Serial.print("Total renewables power = "); Serial.print(renewables_kiloWatts); Serial.println(" kiloWatts\n");
-  
+    
   lcd.clear(); lcd.home();
   lcd.print("Wind power");
   lcd.setCursor(0,1);
@@ -117,12 +117,6 @@ void setup(){
   delay(1500);
   lcd.clear();
   lcd.home();
-
-//  lcd.print("Currently");
-//  lcd.setCursor(0,1);
-//  lcd.print(initialBatteryLevel_percent);
-//  lcd.setCursor(3,1);
-//  lcd.print("%");
    
   int waterLevel = analogRead(waterLevelPin);
   Serial.print("Initial water level = "); Serial.println(waterLevel); 
@@ -288,7 +282,7 @@ void loop(){
       lcd.print(initialBatteryLevel_percent);
       lcd.setCursor(3,1);
       lcd.print("%");   
-      Serial.println("Renewables enough"); delay(2000);
+      Serial.println("Renewables sufficient\n");
       switch (userDemand){
         case 0: // No demand
             
@@ -347,7 +341,7 @@ void loop(){
       lcd.print(initialBatteryLevel_percent);
       lcd.setCursor(3,1);
       lcd.print("%");  
-      Serial.println("Renewables not enough"); delay(2000);
+      Serial.println("Renewables insufficient\n");
       switch (userDemand){
          case 0: // No demand
             while (i == 0){
