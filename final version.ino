@@ -7,7 +7,7 @@
 
 LiquidCrystal_I2C  lcd(0x27,2,1,0,4,5,6,7); // 0x27 is the I2C bus address for an unmodified module
 
-int total_system_power = 0.1; // Power required to operate of the whole system = 0.1 kW
+float total_system_power = 0.1; // Power required to operate of the whole system = 0.1 kW
 float maxWindPower_kiloWatts = 0.06;
 float windPower_kiloWatts;                         // in kiloWatts
 float windPower_share;                     // in %
@@ -289,6 +289,7 @@ void loop()
 {   
   int i = 0;
   if (renewables_kiloWatts >= total_system_power){  //Battery charging   
+    Serial.println("Renewables enough"); delay(2000);
     switch (userDemand){
       case 0: // No demand
           
@@ -341,12 +342,16 @@ void loop()
           }
     }
   }
-  else { // Renewables not enough 
+  else if (renewables_kiloWatts < total_system_power){ // Renewables not enough 
+    Serial.println("Renewables not enough"); delay(2000);
     switch (userDemand){
        case 0: // No demand
           while (i == 0){
             if (analogRead(waterLevelPin) >= lowerWaterLevelThreshold){                // High or medium water level
               if (displayBatteryLevel_discharging() >= 0){
+                Serial.print("Water level = "); Serial.println(analogRead(waterLevelPin));
+                Serial.print("No demand, medium/high water level, discharging from "); Serial.print(currentBatteryLevel_percent); Serial.println("%");
+                displayBatteryLevel_discharging();
                 pumpOffConveyerOff();
               }
               else {
@@ -355,6 +360,9 @@ void loop()
             }
             else{
               if (displayBatteryLevel_discharging() >= 0){
+                Serial.print("Water level = "); Serial.println(analogRead(waterLevelPin));
+                Serial.print("No demand, low water level, discharging from "); Serial.print(currentBatteryLevel_percent); Serial.println("%");
+                displayBatteryLevel_discharging();
                 pumpOnConveyerOff();
               }
               else {
@@ -367,6 +375,9 @@ void loop()
           while (i == 0){
             if (analogRead(waterLevelPin) >= lowerWaterLevelThreshold){                // High or medium water level
               if (displayBatteryLevel_discharging() >= 0){
+                Serial.print("Water level = "); Serial.println(analogRead(waterLevelPin));
+                Serial.print("Low demand, medium/high water level, discharging from "); Serial.print(currentBatteryLevel_percent); Serial.println("%");
+                displayBatteryLevel_discharging();
                 pumpOffConveyorSlow();
               }
               else {
@@ -375,6 +386,9 @@ void loop()
             }
             else{
               if (displayBatteryLevel_discharging() >= 0){
+                Serial.print("Water level = "); Serial.println(analogRead(waterLevelPin));
+                Serial.print("Low demand, low water level, discharging from "); Serial.print(currentBatteryLevel_percent); Serial.println("%");
+                displayBatteryLevel_discharging();
                 pumpOnConveyerSlow();
               }
               else {
@@ -387,6 +401,9 @@ void loop()
           while (i == 0){
             if (analogRead(waterLevelPin) >= lowerWaterLevelThreshold){
               if (displayBatteryLevel_discharging() > 0){
+                Serial.print("Water level = "); Serial.println(analogRead(waterLevelPin));
+                Serial.print("High demand, medium/high water level, discharging from "); Serial.print(currentBatteryLevel_percent); Serial.println("%");
+                displayBatteryLevel_discharging();
                 pumpOffConveyorFast();
               }
               else {
@@ -394,8 +411,11 @@ void loop()
               }  
               }
             else{
-             if (displayBatteryLevel_discharging() > 0){
-              pumpOnConveyorFast();
+              if (displayBatteryLevel_discharging() > 0){
+                Serial.print("Water level = "); Serial.println(analogRead(waterLevelPin));
+                Serial.print("High demand, low water level, discharging from "); Serial.print(currentBatteryLevel_percent); Serial.println("%");
+                displayBatteryLevel_discharging();
+                pumpOnConveyorFast();
               }
               else {
                 stopEverything();
