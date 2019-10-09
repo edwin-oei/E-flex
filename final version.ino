@@ -287,21 +287,20 @@ void pumpOffConveyerOff() {
 
 void loop()
 {   
-  int static newDemand = userDemand;
   int i = 0;
   if (renewables_kiloWatts >= total_system_power){  //Battery charging   
-    switch (newDemand){
+    switch (userDemand){
       case 0: // No demand
           
           while (i == 0){
             if (analogRead(waterLevelPin) >= upperWaterLevelThreshold){
-              Serial.println("Water level = high");// Serial.println(analogRead(waterLevelPin));
+              Serial.print("Water level = "); Serial.println(analogRead(waterLevelPin));
               Serial.print("No demand, high water level, charging from "); Serial.print(currentBatteryLevel_percent); Serial.println("%");
               displayBatteryLevel_charging();
               pumpOffConveyerOff();
             }
             else {
-              Serial.println("Water level = medium to low");
+              Serial.print("Water level = "); Serial.println(analogRead(waterLevelPin));
               Serial.print("No demand, medium/low water level, charging from "); Serial.print(currentBatteryLevel_percent); Serial.println("%");
               displayBatteryLevel_charging();
               pumpOnConveyerOff();         
@@ -311,13 +310,13 @@ void loop()
       case 1: // Low demand
           while (i == 0){
             if (analogRead(waterLevelPin) >= upperWaterLevelThreshold){
-              Serial.println("Water level = high");
+              Serial.print("Water level = "); Serial.println(analogRead(waterLevelPin));
               Serial.print("Low demand, high water level, charging from "); Serial.print(currentBatteryLevel_percent); Serial.println("%");
               displayBatteryLevel_charging();
               pumpOffConveyorSlow();
             }
             else {
-              Serial.println("Water level = medium to low");
+              Serial.print("Water level = "); Serial.println(analogRead(waterLevelPin));
               Serial.print("Low demand, medium/low water level, charging from "); Serial.print(currentBatteryLevel_percent); Serial.println("%");
               displayBatteryLevel_charging();
               pumpOnConveyerSlow();        
@@ -328,13 +327,13 @@ void loop()
       case 2: // High demand
           while (i == 0){
             if (analogRead(waterLevelPin) >= upperWaterLevelThreshold){
-              Serial.println("Water level = high");
+              Serial.print("Water level = "); Serial.println(analogRead(waterLevelPin));
               Serial.print("High demand, high water level, charging from "); Serial.print(currentBatteryLevel_percent); Serial.println("%");
               displayBatteryLevel_charging();
               pumpOffConveyorFast();
             }
             else {
-              Serial.println("Water level = medium to low");
+              Serial.print("Water level = "); Serial.println(analogRead(waterLevelPin));
               Serial.print("High demand, medium/low level, charging from "); Serial.print(currentBatteryLevel_percent); Serial.println("%");
               displayBatteryLevel_charging();
               pumpOnConveyorFast();
@@ -344,23 +343,23 @@ void loop()
   }
   else { // Renewables not enough 
     switch (userDemand){
-      case 2:  // High demand
+       case 0: // No demand
           while (i == 0){
-            if (analogRead(waterLevelPin) >= lowerWaterLevelThreshold){
-              if (displayBatteryLevel_discharging() > 0){
-                pumpOffConveyorFast();
+            if (analogRead(waterLevelPin) >= lowerWaterLevelThreshold){                // High or medium water level
+              if (displayBatteryLevel_discharging() >= 0){
+                pumpOffConveyerOff();
               }
               else {
                 stopEverything();
-              }  
               }
+            }
             else{
-             if (displayBatteryLevel_discharging() > 0){
-              pumpOnConveyorFast();
+              if (displayBatteryLevel_discharging() >= 0){
+                pumpOnConveyerOff();
               }
               else {
                 stopEverything();
-              } 
+              }    
             }
           }
           
@@ -384,23 +383,23 @@ void loop()
             }
           }
           
-      case 0: // No demand
+      case 2:  // High demand
           while (i == 0){
-            if (analogRead(waterLevelPin) >= lowerWaterLevelThreshold){                // High or medium water level
-              if (displayBatteryLevel_discharging() >= 0){
-                pumpOffConveyerOff();
+            if (analogRead(waterLevelPin) >= lowerWaterLevelThreshold){
+              if (displayBatteryLevel_discharging() > 0){
+                pumpOffConveyorFast();
               }
               else {
                 stopEverything();
+              }  
               }
-            }
             else{
-              if (displayBatteryLevel_discharging() >= 0){
-                pumpOnConveyerOff();
+             if (displayBatteryLevel_discharging() > 0){
+              pumpOnConveyorFast();
               }
               else {
                 stopEverything();
-              }    
+              } 
             }
           }
            
