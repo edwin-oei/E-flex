@@ -19,6 +19,7 @@ float renewables_kiloWatts;            // in kiloWatts
 unsigned long startTime = 0;
 unsigned long dummyTime = 0;
 int dummyBatteryLevel_percent = 50;
+int currentBatteryLevel_percent = 50;
 int batteryState = 1; // 1 for charging, 0 for discharging
 
 int userDemand;                          // 0 for no demand, 1 for low demand, 2 for high demand
@@ -133,17 +134,16 @@ void setup(){
   Serial.print("Initial battery level = "); Serial.print(dummyBatteryLevel_percent); Serial.println("%\n"); 
 }
 
-int currentBatteryLevel_percent = 50;
+
 
 //***************************************************************************************************************************************************************
 // Functions *********************************************************************************
 void displayBatteryLevel_charging()
 {
   float static currentBatteryCharge_kiloJoules = 0;
-  //int currentBatteryLevel_percent;
   float initialBatteryCharge_kiloJoules = 180;
   
-  currentBatteryCharge_kiloJoules = initialBatteryCharge_kiloJoules + (millis()-startTime)/1000*0.6;
+  currentBatteryCharge_kiloJoules = initialBatteryCharge_kiloJoules + (millis()-startTime)/1000*0.4;
   currentBatteryLevel_percent =  currentBatteryCharge_kiloJoules/360*100;
   
   if (currentBatteryLevel_percent != dummyBatteryLevel_percent && currentBatteryLevel_percent - dummyBatteryLevel_percent == 2){
@@ -166,34 +166,27 @@ void displayBatteryLevel_charging()
 int displayBatteryLevel_discharging()
 {
   float static currentBatteryCharge_kiloJoules = 0;
-  //int currentBatteryLevel_percent;
   float initialBatteryCharge_kiloJoules = 180;
   
-  currentBatteryCharge_kiloJoules = initialBatteryCharge_kiloJoules - (millis()-startTime)/1000*0.6;
+  currentBatteryCharge_kiloJoules = initialBatteryCharge_kiloJoules - (millis()-startTime)/1000*0.2;
   currentBatteryLevel_percent =  currentBatteryCharge_kiloJoules/360*100;
   
-  if (currentBatteryLevel_percent != dummyBatteryLevel_percent && currentBatteryLevel_percent - dummyBatteryLevel_percent == 2){
+  if (currentBatteryLevel_percent != dummyBatteryLevel_percent &&  dummyBatteryLevel_percent - currentBatteryLevel_percent == 2){
     lcd.clear();
     lcd.home();
     lcd.print("Discharging");
     lcd.setCursor(0,1);
     lcd.print(currentBatteryLevel_percent);
-    lcd.setCursor(2,1);
+    lcd.setCursor(3,1);
     lcd.print("%");
     dummyBatteryLevel_percent = currentBatteryLevel_percent;  
   }
   if (currentBatteryLevel_percent <= 0) {
-    lcd.clear();
-    lcd.home();
-    lcd.print("Battery empty");
-    lcd.setCursor(0,1);
-    lcd.print("Shutting down");
-    delay(2500);
-    lcd.clear();
-    lcd.home();
+   lcd.clear();
+   lcd.home();
+   lcd.print("Battery empty.");
   }
-
-  return currentBatteryLevel_percent;
+  return dummyBatteryLevel_percent;
 }
 
 void runMotorFast()
