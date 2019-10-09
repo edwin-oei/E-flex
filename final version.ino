@@ -152,7 +152,7 @@ void displayBatteryLevel_charging()
     lcd.print("Charging");
     lcd.setCursor(0,1);
     lcd.print(currentBatteryLevel_percent);
-    lcd.setCursor(2,1);
+    lcd.setCursor(3,1);
     lcd.print("%");
     dummyBatteryLevel_percent = currentBatteryLevel_percent;  
   }
@@ -168,7 +168,7 @@ int displayBatteryLevel_discharging()
   float static currentBatteryCharge_kiloJoules = 0;
   float initialBatteryCharge_kiloJoules = 180;
   
-  currentBatteryCharge_kiloJoules = initialBatteryCharge_kiloJoules - (millis()-startTime)/1000*0.2;
+  currentBatteryCharge_kiloJoules = initialBatteryCharge_kiloJoules - (millis()-startTime)/1000*0.4;
   currentBatteryLevel_percent =  currentBatteryCharge_kiloJoules/360*100;
   
   if (currentBatteryLevel_percent != dummyBatteryLevel_percent &&  dummyBatteryLevel_percent - currentBatteryLevel_percent == 2){
