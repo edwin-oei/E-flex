@@ -29,7 +29,6 @@ void setup(){
   Serial.begin(9600);           // set up Serial library at 9600 bps. This is the standard value.
   Serial.flush();             // Clear whatever output was before it
   startTime = millis();
-  Serial.print("Start time: "); Serial.println(startTime);
   Serial.print("Initial battery level: "); Serial.print(initialBatteryLevel_percent); Serial.println("%");
   
   lcd.setBacklightPin(3,POSITIVE);
@@ -126,8 +125,7 @@ void setup(){
 //  lcd.print("%");
    
   int waterLevel = analogRead(waterLevelPin);
-  Serial.print("Initial water level = "); Serial.println(waterLevel);
-  Serial.print("Initial battery level = "); Serial.print(initialBatteryLevel_percent); Serial.println("%\n"); 
+  Serial.print("Initial water level = "); Serial.println(waterLevel); 
 }
 
 //******************************************************************************************************************************************************************************
@@ -269,16 +267,6 @@ int displayBatteryLevel_discharging(){
 
 
 void loop(){
-//    struct batteryLevel{
-//      int dummy;
-//      int current;
-//    };
-//    struct batteryLevel batteryLevel_percent;
-//    batteryLevel_percent.dummy = initialBatteryLevel_percent;
-//    batteryLevel_percent.current = initialBatteryLevel_percent;
-    
-//    int dummyBatteryLevel_percent = initialBatteryLevel_percent;
-//    int currentBatteryLevel_percent = initialBatteryLevel_percent;
     const int waterLevelPin = A2;   
     float total_system_power = 0.1;
     int upperWaterLevelThreshold = 350;
@@ -354,6 +342,11 @@ void loop(){
       }
     }
     else if (renewables_kiloWatts < total_system_power){ // Renewables not enough 
+      lcd.print("Discharging");
+      lcd.setCursor(0,1);
+      lcd.print(initialBatteryLevel_percent);
+      lcd.setCursor(3,1);
+      lcd.print("%");  
       Serial.println("Renewables not enough"); delay(2000);
       switch (userDemand){
          case 0: // No demand
