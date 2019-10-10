@@ -126,6 +126,7 @@ void setup(){
 }
 
 //******************************************************************************************************************************************************************************
+
 void runMotorFast(byte ENA, byte INA1, byte INA2, int fastMotorRPM){
   analogWrite(ENA,fastMotorRPM); //255 is the max output of analog write according to Arduino specs
   digitalWrite(INA1,HIGH);  //INA 1 high and INA2 low means clockwise
@@ -217,6 +218,34 @@ void pumpOffConveyerOff(int pumpPin, int valvePin, byte ENA) {
   stopMotor(ENA);
   digitalWrite(valvePin, LOW);
   Serial.println("Pump off, conveyor stop\n");
+}
+
+
+void runConveyerFast(int valvePin, int fastMotorRPM, byte ENA, byte INA1, byte INA2, int lightSensorPin){
+  runMotorFast(ENA, INA1, INA2, fastMotorRPM);  delay(400);
+  if (analogRead(lightSensorPin) < 100){
+    brakeMotor(ENA, INA1, INA2);
+    digitalWrite(valvePin, HIGH);
+    delay(2000);
+    digitalWrite(valvePin, LOW);
+  }
+}
+
+void runConveyor(byte ENA, byte INA1, byte INA2, int motorRPM, int lightSensorPin, int valvePin){
+  analogWrite(ENA, motorRPM); //255 is the max output of analog write according to Arduino specs
+  digitalWrite(INA1,HIGH);  //INA 1 high and INA2 low means clockwise
+  digitalWrite(INA2,LOW);
+
+  delay(800);
+  
+  if (analogRead(lightSensorPin) < 100){
+    brakeMotor(ENA, INA1, INA2);
+    
+    digitalWrite(valvePin, HIGH);  // Valve open
+    delay(2000);                  // Duration of open valve
+    digitalWrite(valvePin, LOW);  // Valve close
+    delay(500);                   // Buffer time before the ceonveyor moves again
+  }
 }
 
 
@@ -312,51 +341,54 @@ void loop(){
         case 0: // No demand
             
             while (i == 0){
+              runConveyor(ENA, INA1, INA2, 0, lightSensorPin, valvePin);  //At no demand, conveyor always stops, hence the 0 as input argument
               if (analogRead(waterLevelPin) >= upperWaterLevelThreshold){
                 Serial.print("Water level = "); Serial.println(analogRead(waterLevelPin));
+                digitalWrite(pumpPin, LOW);  // Pump off
                 displayBatteryLevel_charging();
                 Serial.print("No demand, high water level, charging from "); Serial.print(currentBatteryLevel_percent); Serial.println("%");              
-                pumpOffConveyerOff(pumpPin, valvePin, ENA);
               }
               else {
                 Serial.print("Water level = "); Serial.println(analogRead(waterLevelPin));
+                digitalWrite(pumpPin, HIGH);  // Pump on
                 displayBatteryLevel_charging();
                 Serial.print("No demand, medium/low water level, charging from "); Serial.print(currentBatteryLevel_percent); Serial.println("%");
-                pumpOnConveyerOff(pumpPin, valvePin, ENA);         
               }
             }
             
         case 1: // Low demand
             while (i == 0){
+              runConveyor(ENA, INA1, INA2, slowMotorRPM, lightSensorPin, valvePin);  //At low demand, conveyor always runs slowly
               if (analogRead(waterLevelPin) >= upperWaterLevelThreshold){
                 Serial.print("Water level = "); Serial.println(analogRead(waterLevelPin));
+                digitalWrite(pumpPin, LOW);  // Pump off
                 displayBatteryLevel_charging();
                 Serial.print("Low demand, high water level, charging from "); Serial.print(currentBatteryLevel_percent); Serial.println("%");
-                pumpOffConveyorSlow(pumpPin, valvePin, slowMotorRPM, ENA, INA1, INA2);
               }
               else {
                 Serial.print("Water level = "); Serial.println(analogRead(waterLevelPin));
+                digitalWrite(pumpPin, HIGH);  // Pump on
                 displayBatteryLevel_charging();
                 Serial.print("Low demand, medium/low water level, charging from "); Serial.print(currentBatteryLevel_percent); Serial.println("%");
-                pumpOnConveyerSlow(pumpPin, valvePin, slowMotorRPM, ENA, INA1, INA2);        
               }
               
             }
         
         case 2: // High demand
             while (i == 0){
-              if (analogRead(waterLevelPin) >= upperWaterLevelThreshold){
+              runConveyor(ENA, INA1, INA2, fastMotorRPM, lightSensorPin, valvePin);  //At high demand, conveyor always runs fast
+              if (analogRead(waterLevelPin) >= lowerWaterLevelThreshold){
                 Serial.print("Water level = "); Serial.println(analogRead(waterLevelPin));
+                digitalWrite(pumpPin, LOW);  //Pump off
                 displayBatteryLevel_charging();
-                Serial.print("High demand, high water level, charging from "); Serial.print(currentBatteryLevel_percent); Serial.println("%");
-                pumpOffConveyorFast(pumpPin, valvePin, fastMotorRPM, ENA, INA1, INA2);
+                Serial.print("High demand, medium/high water level, discharging from "); Serial.print(currentBatteryLevel_percent); Serial.println("%\n");
+                
               }
-              else {
+              else{
                 Serial.print("Water level = "); Serial.println(analogRead(waterLevelPin));
-                Serial.print("Current light value = "); Serial.println(analogRead(lightSensorPin));
+                digitalWrite(pumpPin, HIGH);    //Pump on
                 displayBatteryLevel_charging();
-                Serial.print("High demand, medium/low level, charging from "); Serial.print(currentBatteryLevel_percent); Serial.println("%");
-                pumpOnConveyorFast(pumpPin, valvePin, fastMotorRPM, ENA, INA1, INA2, lightSensorPin);
+                Serial.print("High demand, medium/low level, charging from "); Serial.print(currentBatteryLevel_percent); Serial.println("%\n");
               }
             }
       }
@@ -428,7 +460,7 @@ void loop(){
                 else {
                   stopEverything(ENA, pumpPin, valvePin);
                 }  
-                }
+              }
               else{
                 if (displayBatteryLevel_discharging() > 0){
                   Serial.print("Water level = "); Serial.println(analogRead(waterLevelPin));
