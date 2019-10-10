@@ -156,7 +156,7 @@ void runConveyor(byte ENA, byte INA1, byte INA2, int motorRPM, int lightSensorPi
     brakeMotor(ENA, INA1, INA2);
     
     digitalWrite(valvePin, HIGH);  // Valve open
-    delay(2000);                  // Duration of open valve
+    delay(30000);                  // Duration of open valve
     digitalWrite(valvePin, LOW);  // Valve close
     delay(500);                   // Buffer time before the ceonveyor moves again
   }
