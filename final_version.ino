@@ -7,6 +7,7 @@
   
 LiquidCrystal_I2C  lcd(0x27,2,1,0,4,5,6,7); // 0x27 is the I2C bus address for an unmodified module
 
+//int lightSensorPin = A0;
 
 float renewables_kiloWatts;            // in kiloWatts
 byte userDemand;
@@ -17,6 +18,8 @@ int dummyBatteryLevel_percent = initialBatteryLevel_percent;
 int currentBatteryLevel_percent = initialBatteryLevel_percent;   
 
 void setup(){
+  //pinMode(lightSensorPin, INPUT);
+  
   char junk = ' ';
   const int waterLevelPin = A2;          //Pin A3 is for the water level sensor. Why integer? Bcos it is given by manufacturer. A3 will be converted to integer on the board.
   float maxWindPower_kiloWatts = 0.06;
@@ -26,7 +29,7 @@ void setup(){
   float solarPower_kiloWatts;                       
   float solarPower_share;     
               
-  Serial.begin(9600);           // set up Serial library at 9600 bps. This is the standard value.
+  Serial.begin(19200);           // set up Serial library at 9600 bps. This is the standard value.
   Serial.flush();             // Clear whatever output was before it
   startTime = millis();
   Serial.print("Initial battery level: "); Serial.print(initialBatteryLevel_percent); Serial.println("%");
@@ -154,14 +157,25 @@ void stopEverything(byte ENA, int pumpPin, int valvePin){
   lcd.clear();
 }
   
-  
-void pumpOnConveyorFast(int pumpPin, int valvePin, int fastMotorRPM, byte ENA, byte INA1, byte INA2) {
+ 
+void pumpOnConveyorFast(int pumpPin, int valvePin, int fastMotorRPM, byte ENA, byte INA1, byte INA2, int lightSensorPin) {
   digitalWrite(pumpPin, HIGH);    //  Turn on pump 
   Serial.println("Pump on, conveyor full speed\n");
-  runMotorFast(ENA, INA1, INA2, fastMotorRPM);  delay(2000);
-  brakeMotor(ENA, INA1, INA2);
-  digitalWrite(valvePin, HIGH);  delay(1000);  // Fill the bottle.
-  digitalWrite(valvePin, LOW);
+
+  int j = 1;
+  while (j==1){
+    runMotorFast(ENA, INA1, INA2, fastMotorRPM); delay(1500);
+    Serial.println(analogRead(lightSensorPin));
+    if (analogRead(lightSensorPin) < 90){
+      brakeMotor(ENA, INA1, INA2); delay(2000); 
+    }
+  }
+  
+  
+  //delay(2000);
+  //brakeMotor(ENA, INA1, INA2);
+  //digitalWrite(valvePin, HIGH);  delay(1000);  // Fill the bottle.
+  //digitalWrite(valvePin, LOW);
 }
   
 void pumpOffConveyorFast(int pumpPin, int valvePin, int fastMotorRPM, byte ENA, byte INA1, byte INA2) {
@@ -261,7 +275,8 @@ int displayBatteryLevel_discharging(){
 
 
 void loop(){
-    const int waterLevelPin = A2;   
+    const int waterLevelPin = A2;
+    int lightSensorPin = A0;   
     float total_system_power = 0.1;
     int upperWaterLevelThreshold = 350;
     int lowerWaterLevelThreshold = 50;
@@ -273,6 +288,16 @@ void loop(){
     int slowMotorRPM = 120;
     int fastMotorRPM = 255;
     int i = 0;
+
+    pinMode(waterLevelPin, INPUT);
+    pinMode(pumpPin, OUTPUT);
+    pinMode(valvePin, OUTPUT);
+    pinMode(INA1, OUTPUT);
+    pinMode(INA2, OUTPUT);
+    pinMode(ENA, OUTPUT);
+    //pinMode(lightSensorPin, INPUT);
+
+    Serial.print("Light value = "); Serial.println(analogRead(lightSensorPin));
 
     startTime = millis();
     
@@ -328,9 +353,10 @@ void loop(){
               }
               else {
                 Serial.print("Water level = "); Serial.println(analogRead(waterLevelPin));
+                Serial.print("Current light value = "); Serial.println(analogRead(lightSensorPin));
                 displayBatteryLevel_charging();
                 Serial.print("High demand, medium/low level, charging from "); Serial.print(currentBatteryLevel_percent); Serial.println("%");
-                pumpOnConveyorFast(pumpPin, valvePin, fastMotorRPM, ENA, INA1, INA2);
+                pumpOnConveyorFast(pumpPin, valvePin, fastMotorRPM, ENA, INA1, INA2, lightSensorPin);
               }
             }
       }
@@ -407,7 +433,7 @@ void loop(){
                 if (displayBatteryLevel_discharging() > 0){
                   Serial.print("Water level = "); Serial.println(analogRead(waterLevelPin));
                   Serial.print("High demand, low water level, discharging from "); Serial.print(currentBatteryLevel_percent); Serial.println("%");
-                  pumpOnConveyorFast(pumpPin, valvePin, fastMotorRPM, ENA, INA1, INA2);
+                  pumpOnConveyorFast(pumpPin, valvePin, fastMotorRPM, ENA, INA1, INA2, lightSensorPin);
                 }
                 else {
                   stopEverything(ENA, pumpPin, valvePin);
