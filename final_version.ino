@@ -144,8 +144,13 @@ void runConveyor(byte ENA, byte INA1, byte INA2, int motorRPM, int lightSensorPi
   analogWrite(ENA, motorRPM); //255 is the max output of analog write according to Arduino specs
   digitalWrite(INA1,HIGH);  //INA 1 high and INA2 low means clockwise
   digitalWrite(INA2,LOW);
-  
-  delay(800);
+
+  if (motorRPM == 200){
+    delay(850);
+  }
+  else{
+    delay(725);
+  }
   
   if (analogRead(lightSensorPin) < 100){
     brakeMotor(ENA, INA1, INA2);
@@ -224,8 +229,8 @@ void loop(){
     const byte  ENA = 6;         //L298N pins setting, for conveyor DC motor. First pin
     const byte  INA1 = 5;       // Second pin for motor
     const byte  INA2 = 4;       // Third pin for motor
-    int slowMotorRPM = 180;
-    int fastMotorRPM = 255;
+    int slowMotorRPM = 255;    // Arduino behaves weirdly here. Value is the opposite of what is expected
+    int fastMotorRPM = 200;
     int i = 0;
 
     pinMode(waterLevelPin, INPUT);
