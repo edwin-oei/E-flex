@@ -7,8 +7,8 @@
 LiquidCrystal_I2C  lcd(0x27,2,1,0,4,5,6,7); // 0x27 is the I2C bus address for an unmodified module. The other values in the brackets are standard
 
 // The variable type here is set as constant to make it easier for future programmers to understand the code.
-int lowerWaterLevelThreshold = 50;    // Anything below this is considered low water level, ie 50 <= medium water level < 350
-int upperWaterLevelThreshold = 500;   // Anything above this is considered high water level
+int lowerWaterLevelThreshold = 50;    // Anything at or below this is considered low water level, ie 50 < medium water level < 500
+int upperWaterLevelThreshold = 500;   // Anything at or above this is considered high water level
 int slowMotorRPM = 255;    // Arduino behaves weirdly here. 255 is slower than 200
 int fastMotorRPM = 200;
 int waterLevelPin = A2;    // Variable type must be int as specified by manufacturer
