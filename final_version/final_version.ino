@@ -94,20 +94,20 @@ void setup(){
     }
     
 
-    Serial.println("Enter share of wind power in % and press ENTER");
+    Serial.println("Enter wind power in % and press ENTER");
     while (Serial.available() == 0) ;  // Wait here until input buffer has a character
     {
       windPower_share = Serial.parseInt();        // new command in 1.0 forward
-      Serial.print("Wind power share = "); Serial.print(windPower_share); Serial.println("%");  //Prints in DECimal format
+      Serial.print("Wind power = "); Serial.print(windPower_share); Serial.println("%");  //Prints in DECimal format
       while (Serial.available() > 0)  // .parseFloat() can leave non-numeric characters. Not sure if this is necessary?????????????????
       { junk = Serial.read() ; }      // clear the keyboard buffer
     }
   
-    Serial.println("Enter share of solar power in % and press ENTER");
+    Serial.println("Enter solar power in % and press ENTER");
     while (Serial.available() == 0) ;
     {
       solarPower_share = Serial.parseInt();
-      Serial.print("Solar power share = "); Serial.print(solarPower_share); Serial.println("%\n");    
+      Serial.print("Solar power = "); Serial.print(solarPower_share); Serial.println("%\n");    
       while (Serial.available() > 0)
       { junk = Serial.read() ; }
     }
@@ -191,7 +191,7 @@ int displayBatteryLevel_charging(){
   currentBatteryCharge_kiloJoules = initialBatteryCharge_kiloJoules + (millis()-startTime)/1000*(renewables_kiloWatts-systemPower_kiloWatts);
   currentBatteryLevel_percent =  currentBatteryCharge_kiloJoules/360*100;
     
-  if (currentBatteryLevel_percent != dummyBatteryLevel_percent && currentBatteryLevel_percent - dummyBatteryLevel_percent == 2){
+  if (currentBatteryLevel_percent != dummyBatteryLevel_percent && currentBatteryLevel_percent - dummyBatteryLevel_percent == 1){
     lcd.clear();
     lcd.home();
     lcd.print("Charging");
@@ -217,7 +217,7 @@ int displayBatteryLevel_discharging(){
   currentBatteryCharge_kiloJoules = initialBatteryCharge_kiloJoules - (millis()-startTime)/1000*(systemPower_kiloWatts-renewables_kiloWatts);
   currentBatteryLevel_percent =  currentBatteryCharge_kiloJoules*100/360;
   
-  if (currentBatteryLevel_percent != dummyBatteryLevel_percent &&  dummyBatteryLevel_percent - currentBatteryLevel_percent == 2){
+  if (currentBatteryLevel_percent != dummyBatteryLevel_percent &&  dummyBatteryLevel_percent - currentBatteryLevel_percent == 1){
     lcd.clear();
     lcd.home();
     lcd.print("Discharging");
@@ -242,8 +242,6 @@ int displayBatteryLevel_discharging(){
 void loop(){
     int i = 0;
 
-    Serial.print("Light value = "); Serial.println(analogRead(lightSensorPin));
-
     startTime = millis();
     
     if (renewables_kiloWatts >= systemPower_kiloWatts){   //Enough renewables to power the whole system
@@ -267,13 +265,13 @@ void loop(){
                 Serial.print("Water level = "); Serial.println(analogRead(waterLevelPin));
                 digitalWrite(pumpPin, LOW);  // Pump off
                 displayBatteryLevel_charging();
-                Serial.print("No demand, high water level, charging from "); Serial.print(currentBatteryLevel_percent); Serial.println("%");              
+                Serial.print("High water level, no demand, conveyor stop. Charging from "); Serial.print(currentBatteryLevel_percent); Serial.println("%");              
               }
               else {
                 Serial.print("Water level = "); Serial.println(analogRead(waterLevelPin));
                 digitalWrite(pumpPin, HIGH);  // Pump on
                 displayBatteryLevel_charging();
-                Serial.print("Medium/low water level, pump on, conveyor off. Charging from "); Serial.print(currentBatteryLevel_percent); Serial.println("%");
+                Serial.print("Medium/low water level, pump on, conveyor stop. Charging from "); Serial.print(currentBatteryLevel_percent); Serial.println("%");
               }
             }
             
@@ -323,7 +321,7 @@ void loop(){
                 Serial.print("Water level = "); Serial.println(analogRead(waterLevelPin));
                 digitalWrite(pumpPin, HIGH);    //Pump on
                 displayBatteryLevel_charging();
-                Serial.print("Low water level, pump On, conveyor stop. Charging from "); Serial.print(currentBatteryLevel_percent); Serial.println("%\n");
+                Serial.print("Low water level, pump on, conveyor stop. Charging from "); Serial.print(currentBatteryLevel_percent); Serial.println("%\n");
               }
             }
       }
@@ -339,10 +337,10 @@ void loop(){
          case 0: // No demand
             while (i == 0){
               if (analogRead(waterLevelPin) >= lowerWaterLevelThreshold){                // High or medium water level
-                if (displayBatteryLevel_discharging() >= 0){
+                if (displayBatteryLevel_discharging() > 0){
                   Serial.print("Water level = "); Serial.println(analogRead(waterLevelPin));
                   digitalWrite(pumpPin, LOW);    //Pump off
-                  Serial.print("Medium/high water level, pump off, conveyor off. Discharging from "); Serial.print(currentBatteryLevel_percent); Serial.println("%");
+                  Serial.print("Medium/high water level, pump off, conveyor stop. Discharging from "); Serial.print(currentBatteryLevel_percent); Serial.println("%");
                 }
                 else {
                   stopEverything();
@@ -352,7 +350,7 @@ void loop(){
                 if (displayBatteryLevel_discharging() > 0){
                   Serial.print("Water level = "); Serial.println(analogRead(waterLevelPin));
                   digitalWrite(pumpPin, HIGH);    //Pump on
-                  Serial.print("Low water level, pump on, conveyor off. Discharging from "); Serial.print(currentBatteryLevel_percent); Serial.println("%");
+                  Serial.print("Low water level, pump on, conveyor stop. Discharging from "); Serial.print(currentBatteryLevel_percent); Serial.println("%");
                 }
                 else {
                   stopEverything();
@@ -364,7 +362,7 @@ void loop(){
             while (i == 0){
               if (analogRead(waterLevelPin) >= lowerWaterLevelThreshold){                // High or medium water level
                 runConveyor(slowMotorRPM);
-                if (displayBatteryLevel_discharging() >= 0){
+                if (displayBatteryLevel_discharging() > 0){
                   Serial.print("Water level = "); Serial.println(analogRead(waterLevelPin));
                   digitalWrite(pumpPin, LOW);    //Pump off
                   Serial.print("Medium/high water level, pump off, conveyor slow. Discharging from "); Serial.print(currentBatteryLevel_percent); Serial.println("%");
@@ -378,7 +376,7 @@ void loop(){
                 if (displayBatteryLevel_discharging() > 0){
                   Serial.print("Water level = "); Serial.println(analogRead(waterLevelPin));
                   digitalWrite(pumpPin, HIGH);    //Pump on
-                  Serial.print("Low water level, pump on, conveyor off. Discharging from "); Serial.print(currentBatteryLevel_percent); Serial.println("%");
+                  Serial.print("Low water level, pump on, conveyor stop. Discharging from "); Serial.print(currentBatteryLevel_percent); Serial.println("%");
                 }
                 else {
                   stopEverything();
@@ -404,7 +402,7 @@ void loop(){
                 if (displayBatteryLevel_discharging() > 0){
                   Serial.print("Water level = "); Serial.println(analogRead(waterLevelPin));
                   digitalWrite(pumpPin, HIGH);    //Pump on
-                  Serial.print("Low water level, pump on, conveyor off. Discharging from "); Serial.print(currentBatteryLevel_percent); Serial.println("%");
+                  Serial.print("Low water level, pump on, conveyor stop. Discharging from "); Serial.print(currentBatteryLevel_percent); Serial.println("%");
                 }
                 else {
                   stopEverything();
