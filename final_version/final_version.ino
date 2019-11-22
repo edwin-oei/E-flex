@@ -7,8 +7,8 @@
 LiquidCrystal_I2C  lcd(0x27,2,1,0,4,5,6,7); // 0x27 is the I2C bus address for an unmodified module. The other values in the brackets are standard
 
 // The variable type here is set as constant to make it easier for future programmers to understand the code.
-int lowerWaterLevelThreshold = 5;    // Anything at or below this is considered low water level, ie 50 < medium water level < 500
-int upperWaterLevelThreshold = 25;   // Anything at or above this is considered high water level
+int lowerWaterLevelThreshold = 3;    // Anything at or below this is considered low water level, ie 50 < medium water level < 500
+int upperWaterLevelThreshold = 6;   // Anything at or above this is considered high water level
 int slowMotorRPM = 255;    // Arduino behaves weirdly here. 255 is slower than 200
 int fastMotorRPM = 200;
 const int trigPin = 10;
@@ -152,7 +152,7 @@ void setup(){
   digitalWrite(trigPin, HIGH);
   delayMicroseconds(10);                  // Sets the trigPinPin on HIGH state for 10 micro seconds
   digitalWrite(trigPin, LOW);
-  int waterLevel = 30 - pulseIn(echoPin, HIGH)*0.034/2; // unit:cm, speed out sound=340 m/s= 0.034 cm/ms. 30 is to be measured, should equal the tank height
+  int waterLevel = 14 - pulseIn(echoPin, HIGH)*0.034/2; // unit:cm, speed out sound=340 m/s= 0.034 cm/ms. 30 is to be measured, should equal the tank height
   //Serial.print("distance:");
   //Serial.print(distance);
   //Serial.println("cm");
@@ -194,7 +194,7 @@ void runConveyor(int motorRPM){
     digitalWrite(valvePin, HIGH);  // Valve open
     delay(500);                  // Duration of open valve
     digitalWrite(valvePin, LOW);  // Valve close
-    delay(700);                   // Buffer time before the ceonveyor moves again
+    delay(2000);                   // Buffer time before the ceonveyor moves again
   }
   
   }
