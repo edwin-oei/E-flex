@@ -6,9 +6,9 @@ GPIO.setmode(GPIO.BOARD)  # BCM = GPIO pin numbering based on broadcom standards
 
 
 # LCD
-LCD = LiquidCrystalPi.LCD(29, 31, 33, 35, 37, 38)
-LCD.begin(16, 2)
-LCD.write("Hello world")
+lcd = LiquidCrystalPi.LCD(5, 17, 27, 22, 10, 9)
+lcd.begin(16, 2)
+lcd.write("Hello world")
 time.sleep(1.5)
-LCD.clear()
+lcd.clear()
 GPIO.cleanup()
