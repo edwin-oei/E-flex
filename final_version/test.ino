@@ -1,14 +1,14 @@
-#include <LiquidCrystal_I2C.h>
 #include "time.h"
 #include "math.h"               
 #include<Wire.h>
+#include<LiquidCrystal_I2C.h>
+LiquidCrystal_I2C  lcd(0x27,2,1,0,4,5,6,7); // 0x27 is the I2C bus address for an unmodified module. The other values in the brackets are standard
 #include <FastLED.h>
 #define ledPIN     11
 #define NUM_LEDS    18 // Numbering from 0 - 17
 CRGB leds[NUM_LEDS];  // Set up the block of memory that will be used for storing and manipulating the led data (array)
 uint8_t ledBrightness = 56;  // Brightness level ranges from 0 to 255
 
-LiquidCrystal_I2C  lcd(0x27,2,1,0,4,5,6,7); // 0x27 is the I2C bus address for an unmodified module. The other values in the brackets are standard
 // The variable type here is set as constant to make it easier for future programmers to understand the code.
 int lowerWaterLevelThreshold = 3;    // Anything at or below this is considered low water level, ie 50 < medium water level < 500
 int upperWaterLevelThreshold = 6;   // Anything at or above this is considered high water level
@@ -23,7 +23,11 @@ byte  ENA = 6;         //L298N pins setting, for conveyor DC motor. First pin
 byte  INA1 = 5;       // Second pin for motor
 byte  INA2 = 4;       // Third pin for motor
 byte  stopEverythingPin = 8;
+byte  pumpLEDPin = 11 ;
+byte  waterLevelLEDPin = 12 ;
+byte  conveyorLEDPin = 13;
 byte  RE_enoughPin = 2;
+
 
 // The values below can be adjusted as how the team sees fit
 float systemPower_kiloWatts = 0.1;    // Total power needed to run the entire system
@@ -46,8 +50,11 @@ void setup(){
   pinMode(INA2, OUTPUT);
   pinMode(ENA, OUTPUT);
   pinMode(lightSensorPin, INPUT);
-  pinMode(RE_enoughPin, OUTPUT);
   pinMode(stopEverythingPin, OUTPUT);
+  pinMode(pumpLEDPin, OUTPUT);
+  pinMode(waterLevelLEDPin, OUTPUT);
+  pinMode(conveyorLEDPin, OUTPUT);
+  pinMode(RE_enoughPin, OUTPUT);
 
   FastLED.addLeds<WS2812, ledPIN, GRB>(leds, NUM_LEDS);
   FastLED.setBrightness(ledBrightness);
@@ -151,8 +158,9 @@ void setup(){
   delay(1500);
   lcd.clear();
   lcd.home();
-
-  Serial.print(F("Initial water level = ")); Serial.println(computeWaterLevel()); 
+   
+  int waterLevel = computeWaterLevel();
+  Serial.print(F("Initial water level = ")); Serial.println(waterLevel); 
 }
 
 //******************************************************************************************************************************************************************************
@@ -181,10 +189,8 @@ void stopEverything(){
   analogWrite(ENA, 0);
   digitalWrite(pumpPin, LOW);
   digitalWrite(valvePin, LOW);
-  analogWrite(stopEverythingPin, 250);
   lcd.clear();
-  fill_solid(leds, NUM_LEDS, CRGB(145,44,238));
-  FastLED.show();
+  analogWrite(stopEverythingPin, 250);
 }
 
 void runConveyor(int motorRPM){
@@ -208,8 +214,7 @@ void runConveyor(int motorRPM){
     delay(2000);                   // Buffer time before the ceonveyor moves again
   }
   
-}
-
+  }
 
 int displayBatteryLevel_charging(){
   float currentBatteryCharge_kiloJoules = 0;
@@ -265,13 +270,15 @@ int displayBatteryLevel_discharging(){
 
 //******************************************************************************************************************************************************************************
 
-startTime = millis();
+
 void loop(){
   int i = 0;
   
+  startTime = millis();
+  
   if (renewables_kiloWatts >= systemPower_kiloWatts){   //Enough renewables to power the whole system
     Serial.println(F("Renewables sufficient\n\n"));
-    analogWrite(RE_enoughPin, 250);  // Command second arduino to run the corresponding led animation
+    analogWrite(RE_enoughPin, 200);  // Command second arduino to run the corresponding led animation
     
     if (renewables_kiloWatts == systemPower_kiloWatts){
       lcd.print("Battery stable");
@@ -286,19 +293,15 @@ void loop(){
          
   switch (userDemand){
     case 0: // No demand
-      leds[9] = CRGB::Black;     // 9: bottle1 ; no demand --> black ; redundant
-      leds[10] = CRGB::Black;     // 10: bottle2 ; no demand --> black ; redundant
-      FastLED.show();       
+        analogWrite(conveyorLEDPin, 10);  // Turn off conveyor
               
       while (i == 0){
         if (computeWaterLevel() > upperWaterLevelThreshold){
           Serial.print(F("Water level = ")); Serial.println(computeWaterLevel()); Serial.println(F("cm"));
-          leds[6] = CRGB(255,165,0);     // 6: waterlevel ; high --> yellow 
-          FastLED.show();  
+          analogWrite(waterLevelLEDPin, 200);  // Water level LED high
 
           digitalWrite(pumpPin, LOW);  // Pump off
-          leds[3] = CRGB(255,69,0);     // 3: pump ; pump off --> orange 
-          FastLED.show();    
+          analogWrite(waterLevelLEDPin, 10); 
           
           displayBatteryLevel_charging();
           Serial.print("High water level, no demand, conveyor stop. Charging from "); Serial.print(currentBatteryLevel_percent); Serial.println("%"); 
@@ -307,17 +310,14 @@ void loop(){
         else{
           Serial.print(F("Water level = ")); Serial.println(computeWaterLevel()); Serial.println(F("cm"));
           if(computeWaterLevel() < lowerWaterLevelThreshold){
-            leds[6] = CRGB::Red;     // 6: waterlevel ; low --> red
-            FastLED.show();
+            analogWrite(waterLevelLEDPin, 10);
           }
           else{
-            leds[6] = CRGB::Green;     // 6: waterlevel ; Medium --> green
-            FastLED.show();
+            analogWrite(waterLevelLEDPin, 100);
           }
             
           digitalWrite(pumpPin, HIGH);  // Pump on
-          leds[3] = CRGB::Green;     // 3: pump ; pump on --> green 
-          FastLED.show();
+          analogWrite(pumpLEDPin, 200);
 
           Serial.print(F("Medium/low water level, pump on, conveyor stop. Charging from ")); Serial.print(currentBatteryLevel_percent); Serial.println(F("%"));
           displayBatteryLevel_charging();
@@ -329,15 +329,12 @@ void loop(){
       while (i == 0){
         if (computeWaterLevel() > upperWaterLevelThreshold){
           Serial.print(F("Water level = ")); Serial.println(computeWaterLevel()); Serial.println(F("cm"));
-          leds[6] = CRGB(255,165,0);     // 6: waterlevel ; high --> yellow
-          FastLED.show();
+          analogWrite(waterLevelLEDPin, 200);
         
           digitalWrite(pumpPin, LOW);  // Pump off
-          leds[3] = CRGB(255,69,0);     // 3: pump ; pump off --> orange 
-          FastLED.show();
+          analogWrite(pumpLEDPin, 10);
           
-          leds[9] = CRGB(0, 0, 255);    // 9: bottle1 ; conveyor slow --> blue ; 10: bottle2 --> not activated
-          FastLED.show();
+          analogWrite(conveyorLEDPin, 100);
           runConveyor(slowMotorRPM);  // At low demand, conveyor always runs slowly
           
           displayBatteryLevel_charging();
@@ -346,15 +343,12 @@ void loop(){
         
         else if (upperWaterLevelThreshold >= computeWaterLevel() && computeWaterLevel() >= lowerWaterLevelThreshold){
           Serial.print(F("Water level = ")); Serial.println(computeWaterLevel()); Serial.println(F("cm"));
-          leds[6] = CRGB::Green;     // 6: waterlevel ; medium --> green
-          FastLED.show();
+          analogWrite(waterLevelLEDPin, 100);
 
           digitalWrite(pumpPin, HIGH);  // Pump on
-          leds[3] = CRGB::Green;     // 3: pump ; pump on --> green
-          FastLED.show();
+          analogWrite(pumpLEDPin, 200);
           
-          leds[9] = CRGB(0, 0, 255);    // 9: bottle1 ; conveyor slow --> blue ; 10: bottle2 --> not activated
-          FastLED.show();
+          analogWrite(conveyorLEDPin, 100);
           runConveyor(slowMotorRPM);  //At low demand, conveyor always runs slowly
           
           displayBatteryLevel_charging();
@@ -363,37 +357,29 @@ void loop(){
               
         else if (computeWaterLevel() < lowerWaterLevelThreshold){
           Serial.print(F("Water level = ")); Serial.println(computeWaterLevel()); Serial.println(F("cm"));          
-          leds[6] = CRGB::Red;     // 6: waterlevel ; low --> red
-          FastLED.show();
+          analogWrite(waterLevelLEDPin, 10);
 
           digitalWrite(pumpPin, HIGH);  // Pump on
-          leds[3] = CRGB::Green;     // 3: pump ; pump on --> green
-          FastLED.show();
+          analogWrite(pumpLEDPin, 200);
                               
-          leds[9] = CRGB::Black;     // 9: bottle1 ;low demand, low waterlevel --> black ; 
-          FastLED.show();
+          analogWrite(conveyorLEDPin, 10);
           brakeMotor();
           
           displayBatteryLevel_charging();
           Serial.print(F("Low water level, pump on, conveyor stop. Charging from ")); Serial.print(currentBatteryLevel_percent); Serial.println(F("%"));          
         }             
       }
-
         
     case 2: // High demand
       while (i == 0){
         if (computeWaterLevel() > upperWaterLevelThreshold){
           Serial.print(F("Water level = ")); Serial.println(computeWaterLevel()); Serial.println(F("cm"));
-          leds[6] = CRGB(255,165,0);     // 6: waterlevel ; high --> yellow
-          FastLED.show();
+          analogWrite(waterLevelLEDPin, 200);
 
           digitalWrite(pumpPin, LOW);  //Pump off
-          leds[3] = CRGB(255,69,0);     // 3: pump ; pump off --> orange
-          FastLED.show();
+          analogWrite(pumpLEDPin, 10);
 
-          leds[9] = CRGB(0, 0, 255);    // 9: bottle1 ; conveyor fast --> blue 
-          leds[10] = CRGB(0, 0, 255);    // 10: bottle2 ; conveyor fast --> blue 
-          FastLED.show();
+          analogWrite(conveyorLEDPin, 200);
           runConveyor(fastMotorRPM);
           
           displayBatteryLevel_charging();
@@ -402,16 +388,12 @@ void loop(){
               
         else if (upperWaterLevelThreshold >= computeWaterLevel() && computeWaterLevel() >= lowerWaterLevelThreshold){
           Serial.print(F("Water level = ")); Serial.println(computeWaterLevel()); Serial.println(F("cm"));
-          leds[6] = CRGB::Green;     // 6: waterlevel ; medium --> green
-          FastLED.show();
+          analogWrite(waterLevelLEDPin, 100);
 
           digitalWrite(pumpPin, HIGH);  //Pump on
-          leds[3] = CRGB::Green;     // 3: pump ; pump on --> green
-          FastLED.show();
+          analogWrite(pumpLEDPin, 200);
                     
-          leds[9] = CRGB(0, 0, 255);    // 9: bottle1 ; conveyor fast --> blue 
-          leds[10] = CRGB(0, 0, 255);    // 10: bottle2 ; conveyor fast --> blue 
-          FastLED.show();
+          analogWrite(conveyorLEDPin, 200);
           runConveyor(fastMotorRPM);
           
           displayBatteryLevel_charging();
@@ -420,16 +402,12 @@ void loop(){
               
         else if (computeWaterLevel() < lowerWaterLevelThreshold){
           Serial.print(F("Water level = ")); Serial.println(computeWaterLevel()); Serial.println(F("cm"));
-          leds[6] = CRGB::Red;     // 6: waterlevel ; low --> red
-          FastLED.show();
+          analogWrite(waterLevelLEDPin, 10);
 
           digitalWrite(pumpPin, HIGH);    //Pump on
-          leds[3] = CRGB::Green;     // 3: pump ; pump on --> green
-          FastLED.show();
+          analogWrite(pumpLEDPin, 200);
           
-          leds[9] = CRGB::Black;    // 9: bottle1 ; deactivated 
-          leds[10] = CRGB::Black;;    // 10: bottle2 ; deactivated 
-          FastLED.show();
+          analogWrite(conveyorLEDPin, 10);
           brakeMotor();
           
           displayBatteryLevel_charging();
@@ -452,85 +430,69 @@ void loop(){
     
     switch (userDemand){
       case 0: // No demand
-        leds[9] = CRGB::Black;     // 9: bottle1 ; no demand --> black ; redundant
-        leds[10] = CRGB::Black;     // 10: bottle2 ; no demand --> black ; redundant
-        FastLED.show();       
-                  
+        analogWrite(conveyorLEDPin, 10);
+               
         while (i == 0){
-          if (displayBatteryLevel_discharging() > 0){
+          if (displayBatteryLevel_discharging() > 0)
             if (computeWaterLevel() >= lowerWaterLevelThreshold){                // High or medium water level
               Serial.print(F("Water level = ")); Serial.println(computeWaterLevel()); Serial.println(F("cm"));
               
               digitalWrite(pumpPin, LOW);    //Pump off
-              leds[3] = CRGB(255,69,0);     // 3: pump ; pump off --> orange
-              FastLED.show();
+              analogWrite(pumpLEDPin, 10);
               
               Serial.print(F("Medium/high water level, pump off, conveyor stop. Discharging from ")); Serial.print(currentBatteryLevel_percent); Serial.println(F("%"));
               if(computeWaterLevel() > upperWaterLevelThreshold){
-                leds[6] = CRGB(255,165,0);     // 6: waterlevel ; high --> yellow
-                FastLED.show();
+                analogWrite(waterLevelLEDPin, 200);
               }
               else{
-                leds[6] = CRGB::Green;     // 6: waterlevel ; Medium --> green
-                FastLED.show();
+                analogWrite(waterLevelLEDPin, 100);
               }
             }
-            
             else{  // Low water level
               Serial.print(F("Water level = ")); Serial.println(computeWaterLevel()); Serial.println(F("cm"));
-              leds[6] = CRGB::Red;     // 6: waterlevel ; low --> red
-              FastLED.show(); 
+              analogWrite(waterLevelLEDPin, 10);
               
               digitalWrite(pumpPin, HIGH);    //Pump on
-              leds[3] = CRGB::Green;     // 3: pump ; pump on --> green
-              FastLED.show();
+              analogWrite(pumpLEDPin, 200);
               
               Serial.print(F("Low water level, pump on, conveyor stop. Discharging from ")); Serial.print(currentBatteryLevel_percent); Serial.println(F("%"));
             }
-          } 
+                
           else{
             stopEverything();
           }
         }
-
             
       case 1: // Low demand
         while (i == 0){
           if (displayBatteryLevel_discharging() > 0){
             runConveyor(slowMotorRPM);
-            leds[9] = CRGB(0, 0, 255);    // 9: bottle1 ; conveyor slow --> blue ; 10: bottle2 ; conveyor slow --> not activated
-            FastLED.show();
+            analogWrite(conveyorLEDPin, 100);
             
             if (computeWaterLevel() >= lowerWaterLevelThreshold){                // High or medium water level
               Serial.print(F("Water level = ")); Serial.println(computeWaterLevel()); Serial.println(F("cm"));
               if(computeWaterLevel() > upperWaterLevelThreshold){
-                leds[6] = CRGB(255,165,0);     // 6: waterlevel ; high --> yellow
-                FastLED.show();
+                analogWrite(waterLevelLEDPin, 200);
               }
               else{
-                leds[6] = CRGB::Green;     // 6: waterlevel ; Medium --> green
-                FastLED.show();
+                analogWrite(waterLevelLEDPin, 100);
               }
               
               digitalWrite(pumpPin, LOW);    //Pump off
-              leds[3] = CRGB(255,69,0);     // 3: pump ; pump off --> orange
-              FastLED.show();
+              analogWrite(pumpLEDPin, 10);
               
               Serial.print(F("Medium/high water level, pump off, conveyor slow. Discharging from ")); Serial.print(currentBatteryLevel_percent); Serial.println(F("%"));
             }
             
             else{  // Low water level
               Serial.print(F("Water level = ")); Serial.println(computeWaterLevel()); Serial.println(F("cm"));
-              leds[6] = CRGB::Red;     // 6: waterlevel ; low --> red
-              FastLED.show();
+              analogWrite(waterLevelLEDPin, 10);
               
               digitalWrite(pumpPin, HIGH);    //Pump on
-              leds[3] = CRGB::Green;     // 3: pump ; pump on --> green
-              FastLED.show();
+              analogWrite(pumpLEDPin, 200);
 
               brakeMotor();
-              leds[9] = CRGB::Black;   // 9: bottle1 ; conveyor off --> deactivated 
-              FastLED.show();
+              analogWrite(conveyorLEDPin, 10);
               
               Serial.print(F("Low water level, pump on, conveyor stop. Discharging from ")); Serial.print(currentBatteryLevel_percent); Serial.println(F("%"));
               }
@@ -540,47 +502,37 @@ void loop(){
             stopEverything();
           } 
         }
-        
             
       case 2:  // High demand
         while (i == 0){
           if (displayBatteryLevel_discharging() > 0){
             runConveyor(fastMotorRPM);  //At high demand, conveyor always runs fast
-            leds[9] = CRGB(0, 0, 255);    // 9: bottle1 ; conveyor fast --> blue 
-            leds[10] = CRGB(0, 0, 255);    // 10: bottle2 ; conveyor fast --> blue 
-            FastLED.show();  
+            analogWrite(conveyorLEDPin, 200);
             
             if (computeWaterLevel() >= lowerWaterLevelThreshold){
               Serial.print(F("Water level = ")); Serial.println(computeWaterLevel()); Serial.println(F("cm"));
               if(computeWaterLevel() > upperWaterLevelThreshold){
-                leds[6] = CRGB(255,165,0);     // 6: waterlevel ; high --> yellow
-                FastLED.show();
+                analogWrite(waterLevelLEDPin, 200);
               }
               else{
-                leds[6] = CRGB::Green;     // 6: waterlevel ; Medium --> green
-                FastLED.show();
+                analogWrite(waterLevelLEDPin, 100);
               }
                   
               digitalWrite(pumpPin, LOW);    //Pump off
-              leds[3] = CRGB(255,69,0);     // 3: pump ; pump off --> orange
-              FastLED.show();
+              analogWrite(pumpLEDPin, 10);
               
               Serial.print(F("Medium/high water level, pump off, conveyor fast. Discharging from ")); Serial.print(currentBatteryLevel_percent); Serial.println(F("%"));                
             }
         
             else{  // Low water level
               Serial.print(F("Water level = ")); Serial.println(computeWaterLevel()); Serial.println(F("cm"));
-              leds[6] = CRGB::Red;     // 6: waterlevel ; low --> red
-              FastLED.show();
+              analogWrite(waterLevel, 10);
               
               digitalWrite(pumpPin, HIGH);    //Pump on
-              leds[3] = CRGB::Green;     // 3: pump ; pump on --> green
-              FastLED.show();
+              analogWrite(pumpLEDPin, 200);
 
               brakeMotor();
-              leds[9] = CRGB::Black;   // 9: bottle1 ; conveyor off --> deactivated 
-              leds[10] = CRGB::Black;   // 10: bottle2 ; conveyor off --> deactivated 
-              FastLED.show();  
+              analogWrite(conveyorLEDPin, 10);
               
               Serial.print(F("Low water level, pump on, conveyor stop. Discharging from ")); Serial.print(currentBatteryLevel_percent); Serial.println(F("%"));                     
             }  
