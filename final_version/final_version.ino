@@ -1,3 +1,4 @@
+#include <LCD.h>
 #include <LiquidCrystal_I2C.h>
 #include "time.h"
 #include "math.h"               
@@ -265,10 +266,10 @@ int displayBatteryLevel_discharging(){
 
 //******************************************************************************************************************************************************************************
 
-startTime = millis();
+
 void loop(){
   int i = 0;
-  
+  startTime = millis();
   if (renewables_kiloWatts >= systemPower_kiloWatts){   //Enough renewables to power the whole system
     Serial.println(F("Renewables sufficient\n\n"));
     analogWrite(RE_enoughPin, 250);  // Command second arduino to run the corresponding led animation
