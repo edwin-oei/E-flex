@@ -1,16 +1,16 @@
 #include <LCD.h>
-#include <LiquidCrystal_I2C.h>
 #include "time.h"
 #include "math.h"               
 #include<Wire.h>
+#include<LiquidCrystal_I2C.h>
 #include <FastLED.h>
 #define ledPIN     11
 #define NUM_LEDS    18 // Numbering from 0 - 17
-CRGB leds[NUM_LEDS];  // Set up the block of memory that will be used for storing and manipulating the led data (array)
-uint8_t ledBrightness = 56;  // Brightness level ranges from 0 to 255
-
+CRGB leds[NUM_LEDS];  // Set up the block of memory that will be used for storing and manipulating the led data (array
 LiquidCrystal_I2C  lcd(0x27,2,1,0,4,5,6,7); // 0x27 is the I2C bus address for an unmodified module. The other values in the brackets are standard
+
 // The variable type here is set as constant to make it easier for future programmers to understand the code.
+uint8_t ledBrightness = 56;  // Brightness level ranges from 0 to 255// The variable type here is set as constant to make it easier for future programmers to understand the code.
 int lowerWaterLevelThreshold = 3;    // Anything at or below this is considered low water level, ie 50 < medium water level < 500
 int upperWaterLevelThreshold = 6;   // Anything at or above this is considered high water level
 int slowMotorRPM = 255;    // Arduino behaves weirdly here. 255 is slower than 200
