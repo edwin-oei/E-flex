@@ -10,7 +10,7 @@ CRGB leds[NUM_LEDS];  // Set up the block of memory that will be used for storin
 LiquidCrystal_I2C  lcd(0x27,2,1,0,4,5,6,7); // 0x27 is the I2C bus address for an unmodified module. The other values in the brackets are standard
 
 // The variable type here is set as constant to make it easier for future programmers to understand the code.
-uint8_t ledBrightness = 56;  // Brightness level ranges from 0 to 255// The variable type here is set as constant to make it easier for future programmers to understand the code.
+uint8_t ledBrightness = 35;  // Brightness level ranges from 0 to 255// The variable type here is set as constant to make it easier for future programmers to understand the code.
 int lowerWaterLevelThreshold = 3;    // Anything at or below this is considered low water level, ie 50 < medium water level < 500
 int upperWaterLevelThreshold = 6;   // Anything at or above this is considered high water level
 int slowMotorRPM = 255;    // Arduino behaves weirdly here. 255 is slower than 200
@@ -24,7 +24,7 @@ byte  ENA = 6;         //L298N pins setting, for conveyor DC motor. First pin
 byte  INA1 = 5;       // Second pin for motor
 byte  INA2 = 4;       // Third pin for motor
 byte  stopEverythingPin = A2;
-byte  RE_enoughPin = A3;
+byte  RE_checkPin = A3;
 
 // The values below can be adjusted as how the team sees fit
 float systemPower_kiloWatts = 0.1;    // Total power needed to run the entire system
@@ -47,15 +47,15 @@ void setup(){
   pinMode(INA2, OUTPUT);
   pinMode(ENA, OUTPUT);
   pinMode(lightSensorPin, INPUT);
-  pinMode(RE_enoughPin, OUTPUT);
+  pinMode(RE_checkPin, OUTPUT);
   pinMode(stopEverythingPin, OUTPUT);
-
-  
 
   FastLED.addLeds<WS2812, ledPIN, GRB>(leds, NUM_LEDS);
   FastLED.setBrightness(ledBrightness);
   FastLED.clear();  // Clears the led values from previous run
   fill_solid(leds, NUM_LEDS, CRGB(0,0,0));
+
+  analogWrite(RE_checkPin, 1);  // Command second arduino to stop led animation
   
   float windPower_kiloWatts;                         
   float windPower_share;                    
@@ -67,7 +67,7 @@ void setup(){
   Serial.begin(19200);           // Set up Serial library at 19200 bps. This is more than the usual 9600
   Serial.flush();             
   Serial.print(F("Initial battery level: ")); Serial.print(initialBatteryLevel_percent); Serial.println(F("%"));
-  FastLED.clear();  
+  FastLED.clear();
   
   lcd.setBacklightPin(3, POSITIVE);  // Turn on LCD backlight
   lcd.setBacklight(LOW); // Just a setting. Keep it this way
@@ -87,8 +87,6 @@ void setup(){
   lcd.print(initialBatteryLevel_percent);
   lcd.setCursor(3, 1);
   lcd.print("%");
-  
-  analogWrite(RE_enoughPin, 1);  // Command second arduino to stop led animation
   
   // Serial input of water demand, wind power share in per cent , solar power share in per cent
   Serial.println(F("\nEnter demand for water (1-3) and press ENTER\n0 : No demand   1 : Low demand   2 : High demand"));
@@ -276,7 +274,7 @@ void loop(){
   startTime = millis();
   if (renewables_kiloWatts >= systemPower_kiloWatts){   //Enough renewables to power the whole system
     Serial.println(F("Renewables sufficient\n\n"));
-    analogWrite(RE_enoughPin, 250);  // Command second arduino to run the corresponding led animation
+    analogWrite(RE_checkPin, 250);  // Command second arduino to run the corresponding led animation
     
     if (renewables_kiloWatts == systemPower_kiloWatts){
       lcd.print("Battery stable");
@@ -447,7 +445,7 @@ void loop(){
     
   else if (renewables_kiloWatts < systemPower_kiloWatts){ // Renewables not enough
     Serial.println(F("Renewables insufficient\n\n")); 
-    analogWrite(RE_enoughPin, 10);  // Command second arduino to run the corresponding led animation
+    analogWrite(RE_checkPin, 10);  // Command second arduino to run the corresponding led animation
      
     lcd.print("Discharging");
     lcd.setCursor(0,1);
