@@ -2,11 +2,11 @@
 #define ledPIN     11
 #define NUM_LEDS    18 // Numbering from 0 - 17
 CRGB leds[NUM_LEDS];  // Set up the block of memory that will be used for storing and manipulating the led data (array)
-uint8_t ledBrightness = 56;  // Brightness level ranges from 0 to 255
+uint8_t ledBrightness = 35;  // Brightness level ranges from 0 to 255
 
 
 byte  stopEverythingPin = A2;
-byte  RE_enoughPin = A3;
+byte  RE_checkPin = A3;
 
 void setup(){
   Serial.begin(19200);    
@@ -14,47 +14,47 @@ void setup(){
   FastLED.setBrightness(ledBrightness);
   FastLED.clear();  // Clears the led values from previous run
   pinMode(stopEverythingPin, INPUT);
-  pinMode(RE_enoughPin, INPUT);
+  pinMode(RE_checkPin, INPUT);
 }
 
 
 void RUN_REenough() {
   leds[1] = CRGB::SeaGreen;
   FastLED.show();
-  delay(40);
+  delay(80);
   leds[1] = CRGB::Black;
   leds[2] = CRGB::SeaGreen;
   FastLED.show();
-  delay(40);
+  delay(80);
   leds[2] = CRGB::Black;  
   leds[4] = CRGB::SeaGreen;
   FastLED.show();
-  delay(40);
+  delay(80);
   leds[4] = CRGB::Black;
   leds[5] = CRGB::SeaGreen;
   FastLED.show();
-  delay(40);
+  delay(80);
   leds[5] = CRGB::Black;      
   leds[7] = CRGB::SeaGreen;
   FastLED.show();
-  delay(40);
+  delay(80);
   leds[7] = CRGB::Black;  
   leds[8] = CRGB::SeaGreen;
   FastLED.show();
-  delay(40);
+  delay(80);
   leds[8] = CRGB::Black;     
   // no energy flow from battery to system?
   leds[17] = CRGB(0,100,0);
   FastLED.show();
-  delay(40);
+  delay(80);
   leds[17] = CRGB::Black;       
   leds[16] = CRGB(0,100,0);
   FastLED.show();
-  delay(40);
+  delay(80);
   leds[16] = CRGB::Black;      
   leds[15] = CRGB(0,100,0);
   FastLED.show();
-  delay(100);
+  delay(160);
   leds[15] = CRGB::Black; 
   FastLED.show();                                   
  }
@@ -62,39 +62,39 @@ void RUN_REenough() {
 void RUN_RENOTenough(){
   leds[13] = CRGB(188,143,143);
   FastLED.show();
-  delay(40);
+  delay(80);
   leds[13] = CRGB::Black;  
   leds[12] = CRGB(188,143,143);
   FastLED.show();
-  delay(40);
+  delay(80);
   leds[12] = CRGB::Black;
   leds[11] = CRGB(188,143,143);
   FastLED.show();
-  delay(40);
+  delay(80);
   leds[11] = CRGB::Black;  
   leds[1] = CRGB::SeaGreen;
   FastLED.show();
-  delay(40);
+  delay(80);
   leds[1] = CRGB::Black;
   leds[2] = CRGB::SeaGreen;
   FastLED.show();
-  delay(40);
+  delay(80);
   leds[2] = CRGB::Black;      
   leds[4] = CRGB::SeaGreen;
   FastLED.show();
-  delay(40);
+  delay(80);
   leds[4] = CRGB::Black;  
   leds[5] = CRGB::SeaGreen;
   FastLED.show();
-  delay(40);
+  delay(80);
   leds[5] = CRGB::Black;     
   leds[7] = CRGB::SeaGreen;
   FastLED.show();
-  delay(40);
+  delay(80);
   leds[7] = CRGB::Black;          
   leds[8] = CRGB::SeaGreen;
   FastLED.show();
-  delay(100);
+  delay(160);
   leds[8] = CRGB::Black;
   FastLED.show();                  
 }
@@ -102,29 +102,29 @@ void RUN_RENOTenough(){
 
 void loop(){
   if (analogRead(stopEverythingPin) < 55){
-    Serial.print(F("Stop everything pin off"));
+    
     // RE enough or not pin
-    if (10 < analogRead(RE_enoughPin) && analogRead(RE_enoughPin) < 20){  // Program start no leds on
-      Serial.print(F("New Start = "));
-      Serial.print(analogRead(RE_enoughPin));
-      Serial.print(F("\n"));
+    if (10 < analogRead(RE_checkPin) && analogRead(RE_checkPin) < 20){  // Program start no leds on
+      Serial.print(F("Program start. LEDs off.\n Re_checkPin = "));
+      Serial.print(analogRead(RE_checkPin));
       FastLED.clear(); 
       FastLED.show();
     }
-    else if (analogRead(RE_enoughPin) < 8){
+    else if (analogRead(RE_checkPin) < 8){
       leds[0] = CRGB::Red;     // 0: RE ; RE not enough --> red
       leds[14] = CRGB(255,69,0);     // 14: Battery ; RE not enough, battery discharging --> orange
       FastLED.show();
-      Serial.print(F("\nRe not enough = "));
-      Serial.print(analogRead(RE_enoughPin));
+      Serial.print(F("RE not enough.\n Re_checkPin = "));
+      Serial.print(analogRead(RE_checkPin));
       RUN_RENOTenough();
     }
-    else if (analogRead(RE_enoughPin) > 800){  // Re enough
-      Serial.print(F("\nRe enough = "));
-      Serial.print(analogRead(RE_enoughPin));
+    else if (analogRead(RE_checkPin) > 800){  // Re enough
+      Serial.print(analogRead(RE_checkPin));
       leds[0] = CRGB::Green;     // 0: RE ; RE enough --> green
       leds[14] = CRGB::Green;     // 14: Battery ; RE enough, battery charging --> green
       FastLED.show();
+      Serial.print(F("RE enough.\n Re_checkPin = "));
+      Serial.print(analogRead(RE_checkPin));
       RUN_REenough();
     }  
   } 
