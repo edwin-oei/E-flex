@@ -23,7 +23,7 @@ int valvePin = 7;         //relay for solenoid valvePin connect to pin 7
 byte  ENA = 6;         //L298N pins setting, for conveyor DC motor. First pin
 byte  INA1 = 5;       // Second pin for motor
 byte  INA2 = 4;       // Third pin for motor
-byte  stopEverythingPin = A2;
+byte  stopEverythingPin = 8;
 byte  RE_checkPin = A3;
 
 // The values below can be adjusted as how the team sees fit
@@ -49,6 +49,7 @@ void setup(){
   pinMode(lightSensorPin, INPUT);
   pinMode(RE_checkPin, OUTPUT);
   pinMode(stopEverythingPin, OUTPUT);
+  digitalWrite(stopEverythingPin, LOW);  // Set this pin to low at the beginning of the run
 
   FastLED.addLeds<WS2812, ledPIN, GRB>(leds, NUM_LEDS);
   FastLED.setBrightness(ledBrightness);
@@ -184,7 +185,7 @@ void stopEverything(){
   analogWrite(ENA, 0);
   digitalWrite(pumpPin, LOW);
   digitalWrite(valvePin, LOW);
-  analogWrite(stopEverythingPin, 250);
+  digitalWrite(stopEverythingPin, HIGH);
   lcd.clear();
   fill_solid(leds, NUM_LEDS, CRGB(145,44,238));
   FastLED.show();

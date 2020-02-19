@@ -5,7 +5,7 @@ CRGB leds[NUM_LEDS];  // Set up the block of memory that will be used for storin
 uint8_t ledBrightness = 35;  // Brightness level ranges from 0 to 255
 
 
-byte  stopEverythingPin = A2;
+byte  stopEverythingPin = 8;
 byte  RE_checkPin = A3;
 
 void setup(){
@@ -101,7 +101,7 @@ void RUN_RENOTenough(){
 
 
 void loop(){
-  if (analogRead(stopEverythingPin) < 55){
+  if (digitalRead(stopEverythingPin) == LOW){
     
     // RE enough or not pin
     if (10 < analogRead(RE_checkPin) && analogRead(RE_checkPin) < 20){  // Program start no leds on
@@ -130,8 +130,6 @@ void loop(){
   } 
   
   else{  // Stop everything
-    Serial.print(analogRead(stopEverythingPin));
-    //Serial.print(F("voltage level = 2"));
     fill_solid(leds, NUM_LEDS, CRGB(145,44,238));
     FastLED.show();
   }
